@@ -10,4 +10,4 @@ The *bartabs* should provide a bar widget containing tabs that are
     7) extendable & contractable
     8) enhanceable with popup menu functions
 
-The features #4 and #8 are still in dreams. Nothing to say about docs:)
+The docs is still in dreams:)

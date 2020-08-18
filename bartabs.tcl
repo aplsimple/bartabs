@@ -28,7 +28,6 @@ namespace eval ::apave::bartabs {
   variable batData [dict create]
   variable NewBarID 0 NewTabID 0 NewTabNo 0
   variable WinWidth -1
-  variable PosX ""
   image create photo ::apave::bartabs::ImgLeftArr \
   -data {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADAFBMVEUAAAD/AAAA/wD//wAAAP//
 AP8A///////b29u2traSkpJtbW1JSUkkJCTbAAC2AACSAABtAABJAAAkAAAA2wAAtgAAkgAAbQAA
@@ -140,15 +139,19 @@ proc ::apave::bartabs::onClickRightArrow {barID} {
 
 #----------------------------------
 
-proc ::apave::bartabs::onClickTabClose {barID wb1 {chcurr true}} {
+proc ::apave::bartabs::onClickTabClose {barID wb1 {chcurr true} {tabID -1}} {
 
   variable batData
-  set label [$wb1 cget -text]
-  set tabID [tab_IDbyName $barID $label]
+  if {$tabID==-1} {
+    set label [$wb1 cget -text]
+    set tabID [tab_IDbyName $barID $label]
+  } else {
+    lassign [Tab_GetOptions $barID $tabID -text] label
+  }
   if {[dict exists $batData $barID -cdel]} {
     set com [dict get $batData $barID -cdel]
     set res [{*}[string map [list %b $barID %t $tabID %l $label] $com]]
-    if {$res eq "" || !$res} return  ;# chosen to not close
+    if {$res eq "" || !$res} {return false} ;# chosen to not close
   }
   bar_Clear $barID
   lassign [Bar_GetOptions $barID -tabs -tleft -tright -tabcurr] -> \
@@ -164,6 +167,7 @@ proc ::apave::bartabs::onClickTabClose {barID wb1 {chcurr true}} {
     set tID [lindex $tabs end 0]
   }
   if {$chcurr || $tcurr==$tabID} {tab_Select $tID}
+  return true
 }
 
 #----------------------------------
@@ -187,32 +191,146 @@ proc ::apave::bartabs::onLeaveTab {barID wb1 wb2} {
 
 #----------------------------------
 
-proc ::apave::bartabs::onButtonPress {barID x wb1 wb2} {
+proc ::apave::bartabs::onButtonPress {barID x wb1} {
 
-  variable batData
-  variable PosX
-  set PosX $x
+  ::apave::bartabs::Bar_SetOptions $barID -movX $x
   set tabID [tab_IDbyName $barID [$wb1 cget -text]]
   tab_Select $tabID
 }
 
 #----------------------------------
 
-proc ::apave::bartabs::onButtonMotion {x wb1 wb2} {
+proc ::apave::bartabs::onButtonMotion {barID x y w wb wb1} {
 
-  variable batData
-  variable PosX
-  if {$PosX eq ""} return
+  lassign [::apave::bartabs::Bar_GetOptions $barID -fgover -bgover -font \
+    -movWin -movX -movx -movY0] -> fgo bgo font movWin movX movx movY0
+  if {$movX eq "" || $w ne $wb1} return
+  # dragging the tab
+  if {![winfo exists $movWin]} {
+    # make the tab's replica to be dragged
+    toplevel $movWin
+    if {[tk windowingsystem] eq "aqua"} {
+      ::tk::unsupported::MacWindowStyle style $movWin help none
+    } else {
+      wm overrideredirect $movWin 1
+    }
+    set movx [set movx1 $x]
+    set movX [expr {[winfo pointerx .]-$x}]
+    set movY0 [expr {[winfo pointery .]-$y}]
+    label $movWin.label -text [$wb1 cget -text] \
+      -foreground $fgo -background $bgo -font $font
+    pack $movWin.label -ipadx 1
+    $wb1 configure -foreground [ttk::style lookup TLabel -background]
+    ::apave::bartabs::Bar_SetOptions $barID -wb1 $wb1 -movx1 $movx1 -movY0 $movY0
+  }
+  wm geometry $movWin +$movX+$movY0
+  ::apave::bartabs::Bar_SetOptions $barID -movX [expr {$movX+$x-$movx}] -movx $x
 }
 
 #----------------------------------
 
-proc ::apave::bartabs::onButtonRelease {x wb1 wb2} {
+proc ::apave::bartabs::onButtonRelease {barID x w} {
 
-  variable batData
-  variable PosX
-  if {$PosX eq ""} return
-  set PosX ""
+  lassign [::apave::bartabs::Bar_GetOptions $barID \
+    -movWin -movX -movx1 -movY0 -wb1 -tabs -tleft -tright -wbar] -> \
+    movWin movX movx1 movY0 wb1 tabs tleft tright wbar
+  ::apave::bartabs::Bar_SetOptions $barID -movX "" -wb1 ""
+  if {[winfo exists $movWin]} {destroy $movWin}
+  if {$movX eq "" || $w ne $wb1} return
+  # dropping the tab to a new position
+  $wb1 configure -foreground [ttk::style lookup TLabel -foreground]
+  # find a tab where the button was released
+  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen
+  set vislen1 $vislen
+  set vlist [list]
+  set i 0
+  set iw1 -1
+  foreach tab $tabs {
+    lassign $tab tID text _wb _wb1 _wb2
+    if {$_wb ne ""} {
+      if {$_wb1 eq $wb1} {
+        set vislen0 $vislen
+        set tab1 $tab
+        set iw1 $i
+        set tabID $tID
+      }
+      set wl [expr {[winfo reqwidth $_wb1] + [winfo reqwidth $_wb2]} + $bd]
+      lappend vlist [list $i $vislen $wl]
+      incr vislen $wl
+    }
+    incr i
+  }
+  if {$iw1==-1} return  ;# for sure
+  set tabssav $tabs
+  incr vislen0 [expr {$x-$movx1}]
+  foreach vl $vlist {
+    lassign $vl i vislen wl
+    set rightest [expr {$i==$tright && $vislen0>(10+$vislen)}]
+    if {($vislen>$vislen0 || $rightest)} {
+      set tabs [lreplace $tabs $iw1 $iw1]
+      set i [expr {$rightest||$iw1>$i?$i:$i-1}]
+      set tabs [linsert $tabs $i $tab1]
+      set left true
+      if {$rightest} {
+        set left false
+        set tleft $i
+      } elseif {$i<$tleft} {
+        set tleft $i
+      }
+      break
+    }
+  }
+  if {$tabssav ne $tabs} {
+    ::apave::bartabs::Bar_SetOptions $barID -tabs $tabs
+    bar_Refill $barID $tleft $left
+  }
+  # set the pointer at the moved button
+  lassign [::apave::bartabs::Bar_GetOptions $barID -tabs] -> tabs
+  foreach tab $tabs {
+    lassign $tab tID text _wb _wb1 _wb2
+    if {$tID == $tabID} {
+      event generate $wbar <Motion> -warp 1 -x [incr vislen1 20] -y 10
+      break
+    }
+    if {$_wb ne ""} {
+      incr vislen1 [expr {[winfo reqwidth $_wb1] + [winfo reqwidth $_wb2]} + $bd]
+    }
+  }
+}
+
+#----------------------------------
+
+proc ::apave::bartabs::onPopup {barID tabID X Y} {
+
+  lassign [::apave::bartabs::Bar_GetOptions $barID -wbar -popup -tabs -fgover -bgover] -> \
+    wbar popup tabs fgo bgo
+  lassign [::apave::bartabs::Tab_GetOptions $barID $tabID -text] textcur
+  set pop $wbar.popupMenu
+  if {[winfo exist $pop]} {destroy $pop}
+  menu $pop -tearoff 0
+  foreach p $popup {
+    lassign $p typ label comm menu
+    set label [string map [list %l $textcur] $label]
+    set comm [string map [list %t $tabID] $comm]
+    switch [string index $typ 0] {
+      "s" {$pop add separator}
+      "c" {$pop add command -label $label -command $comm}
+      "m" {
+        menu $pop.$menu -tearoff 0
+        $pop add cascade -label $label -menu $pop.$menu
+        if {$menu eq "bartabs_cascade"} {
+          foreach tab $tabs {
+            lassign $tab tID text
+            if {$tID==$tabID} {set fg "-foreground $fgo -background $bgo"
+            } else            {set fg ""}
+            $pop.$menu add command -label $text -command \
+              "::apave::bartabs::tab_Show $tID" {*}$fg
+          }
+        }
+      }
+    }
+  }
+  tk_popup $pop $X $Y
 }
 
 # _________________________ Auxiliary procedures ________________________ #
@@ -231,7 +349,7 @@ proc ::apave::bartabs::Aux_InitDraw {barID} {
   set bwidth [expr {$bwidth2<$arrlen ? $WinWidth : min($bwidth2,$WinWidth)}]
   set vislen [expr {$tleft || !$hidearr ? $arrlen : 0}]
   set llen [llength $tabs]
-  return [list $tleft $fgo $bgo $hidearr $tabs $arrlen $bwidth $vislen $llen $wframe $bd]
+  return [list $bwidth $vislen $bd $arrlen $llen $tleft $fgo $bgo $hidearr $tabs $wframe]
 }
 
 #----------------------------------
@@ -258,7 +376,6 @@ proc ::apave::bartabs::Aux_CheckTabVisible { \
   upvar 1 $trightN tright $tabsN tabs $vislenN vislen
   set wb1 $wb.l
   set wb2 $wb.b
-  #incr vislen [expr {[winfo reqwidth $wb1] + [winfo reqwidth $wb2]}]
   incr vislen [expr {[winfo reqwidth $wb1] + [winfo reqwidth $wb2]} + $bd]
   if {$i>$tleft && ($vislen+(($i+1)<$llen||!$hidearr?$arrlen:0))>$bwidth} {
     destroy $wb
@@ -285,6 +402,16 @@ proc ::apave::bartabs::Aux_EndDraw {barID tleft tright llen tabs fgo bgo} {
 }
 
 # _____________________ Internal procedures for tabs ____________________ #
+
+proc ::apave::bartabs::Tab_Label {label} {
+
+  # Prepares a label to be shown in a tab (excludes special characters).
+  #   label - a tab's label
+
+  return [string map {\" \'} $label]
+}
+
+#----------------------------------
 
 proc ::apave::bartabs::Tab_Info {tabID tabinfo} {
 
@@ -365,9 +492,10 @@ proc ::apave::bartabs::Tab_Bindings {barID fgo bgo} {
       catch {
         bind $w <Enter> "::apave::bartabs::onEnterTab $wb1 $wb2 $fgo $bgo"
         bind $w <Leave> "::apave::bartabs::onLeaveTab $barID $wb1 $wb2"
-        bind $w <ButtonPress> "::apave::bartabs::onButtonPress $barID %x $wb1 $wb2"
-        bind $w <ButtonRelease> "::apave::bartabs::onButtonRelease %x $wb1 $wb2"
-        bind $w <Motion> "::apave::bartabs::onButtonMotion %x $wb1 $wb2"
+        bind $w <ButtonPress> "::apave::bartabs::onButtonPress $barID %x $wb1"
+        bind $w <ButtonRelease> "::apave::bartabs::onButtonRelease $barID %x $w"
+        bind $w <Motion> "::apave::bartabs::onButtonMotion $barID %x %y $w $wb $wb1"
+        bind $w <Button-3>  "::apave::bartabs::onPopup $barID $tabID %X %Y"
       }
     }
   }
@@ -478,7 +606,7 @@ proc ::apave::bartabs::Bar_SaveData {barNewInfo} {
 
   # Saves data of a new bar in batData dictionary.
   #   barNewInfo - the new bar's data
-  # Returns a list containing ID and attributes of the new bar.
+  # Returns ID of the new bar.
 
   variable batData
   variable NewBarID
@@ -488,38 +616,29 @@ proc ::apave::bartabs::Bar_SaveData {barNewInfo} {
   set barinfo [dict create \
     -hidearrows false -tleft 0 -tright end -fgover $fgo -bgover $bgo \
     -fgmark #800080 -font "-weight bold -family TkFixedFont -size 11" \
-    -relief flat -bd 1]
-  set tabinfo [list]
-  set tleft 0
-  set tright end
-  set fgover white
-  set bgover green
+    -relief flat -bd 1 -movX "" -movY0 "" -movx1 "" -movWin ".bartabs_move"]
+  set tabinfo [set popup [list]]
+  Bar_PopupInfo $NewBarID popup
   foreach {optnam optval} $barNewInfo {
     switch -exact -- $optnam {
-      -tleft  { ;# index of left tab
-        set tleft $optval
-      }
-      -tright { ;# index of right tab
-        set tright $optval
-      }
-      -fgover  { ;# foreground color of a tab under mouse
-        set fgover $optval
-      }
-      -bgover  { ;# background color of a tab under mouse
-        set bgover $optval
-      }
       -tab    { ;# a tab's info is a text
         set found false
-        foreach tab $tabinfo {
-          if {[lindex $tab 1] eq $optval} {
-            set found true ;# no duplicate tabs allowed
-            break
-          }
-        }
-        if {!$found} {
-          lappend tabinfo [Tab_NewData $NewBarID [list $optval]]
+        set optval [Tab_Label $optval]
+        if {[set tab [Tab_NewData $NewBarID [list $optval]]] ne ""} {
+          lappend tabinfo $tab
         }
         continue
+      }
+      -popup {
+        lappend popup $optval
+      }
+      -tleft  { ;# index of left tab
+      }
+      -tright { ;# index of right tab
+      }
+      -fgover  { ;# foreground color of a tab under mouse
+      }
+      -bgover  { ;# background color of a tab under mouse
       }
       -fgmark  { ;# foreground color of a tab marked
       }
@@ -557,9 +676,10 @@ proc ::apave::bartabs::Bar_SaveData {barNewInfo} {
     }
     dict set barinfo $optnam $optval
   }
-  dict set barinfo -tabs $tabinfo     ;# tabs' info is a last item
+  dict set barinfo -popup $popup
+  dict set barinfo -tabs $tabinfo
   dict set batData $NewBarID $barinfo
-  return [list $NewBarID $tleft $tright $fgover $bgover $tabinfo]
+  return $NewBarID
 }
 
 #----------------------------------
@@ -601,7 +721,7 @@ proc ::apave::bartabs::Bar_SetOptions {barID args} {
 
 proc ::apave::bartabs::Bar_ScrollCurr {barID dir} {
 
-  # Scrolls the current tab the left/right.
+  # Scrolls the current tab to the left/right.
   #   barID - ID of the bar
   #   dir - -1 if scrolling to the left; 1 if to the right
 
@@ -737,6 +857,23 @@ proc ::apave::bartabs::Bar_ArrowsState {barID sleft sright} {
 
 #----------------------------------
 
+proc ::apave::bartabs::Bar_PopupInfo {barID popName} {
+
+  # Creates a popup menu items in a tab bar.
+  #   barID - ID of the bar
+  #   popName - variable name for popup's data
+
+  upvar 1 $popName pop
+  lappend pop "m {List} {} bartabs_cascade"
+  lappend pop "s"
+  lappend pop "c {Close} {::apave::bartabs::tab_Close %t}"
+  lappend pop "c {Close all} {::apave::bartabs::tab_CloseFew $barID}"
+  lappend pop "c {Close all at left} {::apave::bartabs::tab_CloseFew $barID %t 1}"
+  lappend pop "c {Close all at right} {::apave::bartabs::tab_CloseFew $barID %t}"
+}
+
+# ____________________ Interface procedures for bars ____________________ #
+
 proc ::apave::bartabs::bar_FillFromLeft {barID {ileft ""} {tright "end"}} {
 
   # Fills a bar with tabs from the left to the right (as much tabs as possible).
@@ -746,7 +883,7 @@ proc ::apave::bartabs::bar_FillFromLeft {barID {ileft ""} {tright "end"}} {
 
   variable batData
   variable WinWidth
-  lassign [Aux_InitDraw $barID] tleft fgo bgo hidearr tabs arrlen bwidth vislen llen wframe bd
+  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen tleft fgo bgo hidearr tabs wframe
   if {$ileft ne ""} {set tleft $ileft}
   for {set n $tleft} {$n<$llen} {incr n} {
     lassign [lindex $tabs $n] tabID text
@@ -771,7 +908,7 @@ proc ::apave::bartabs::bar_FillFromRight {barID {tleft 0} {tright "end"}} {
 
   variable batData
   variable WinWidth
-  lassign [Aux_InitDraw $barID] tleft fgo bgo hidearr tabs arrlen bwidth vislen llen wframe bd
+  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen tleft fgo bgo hidearr tabs wframe
   if {$tright eq "end" || $tright>=$llen} {set tright [expr {$llen-1}]}
   for {set n $tright} {$n>=0} {incr n -1} {
     lassign [lindex $tabs $n] tabID text
@@ -814,7 +951,7 @@ proc ::apave::bartabs::bar_Refill {barID itab left} {
   }
 }
 
-# ____________________ Interface procedures for bars ____________________ #
+#----------------------------------
 
 proc ::apave::bartabs::bar_Remove {barID} {
 
@@ -860,8 +997,7 @@ proc ::apave::bartabs::bar_Clear {barID} {
 proc ::apave::bartabs::bar_Create {barInfo} {
 
   # Creates a tab bar.
-  #   barInfo - a list of bars' data
-  # Returns ID of the tab created
+  #   barInfo - a list of bar's data
 
   variable WinWidth
   set w [dict get $barInfo -wbar] ;# parent window (a frame, most likely)
@@ -869,7 +1005,7 @@ proc ::apave::bartabs::bar_Create {barInfo} {
   set wlarr $w.larr   ;# left scrolling button
   set wrarr $w.rarr   ;# right scrolling button
   lappend barInfo -wwid [list $wframe $wlarr $wrarr]
-  lassign [Bar_SaveData $barInfo] barID tleft tright fgo bgo tabinfo
+  set barID [Bar_SaveData $barInfo]
   lassign [Bar_GetOptions $barID -bwidth] -> bwidth
   button $wlarr -image ::apave::bartabs::ImgLeftArr \
     -command [list ::apave::bartabs::onClickLeftArrow $barID] \
@@ -894,7 +1030,7 @@ proc ::apave::bartabs::bar_Redraw {barID {doupdate true}} {
   variable batData
   variable WinWidth
   if {$doupdate} update
-  lassign [Aux_InitDraw $barID] tleft fgo bgo hidearr tabs arrlen bwidth vislen llen wframe bd
+  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen tleft fgo bgo hidearr tabs wframe
   for {set i [set tright $tleft]} {$i<$llen} {incr i} {
     set tab [lindex $tabs $i]
     lassign $tab tabID text wb wb1 wb2
@@ -1075,7 +1211,46 @@ proc ::apave::bartabs::tab_Close {tabID} {
   #   tabID - ID of the tab
 
   lassign [tab_BarID $tabID] barID tabs i
-  onClickTabClose $barID [lindex $tabs $i 3] false
+  return [onClickTabClose $barID [lindex $tabs $i 3] false $tabID]
+}
+
+#----------------------------------
+
+proc ::apave::bartabs::tab_CloseFew {barID {tabID -1} {left 0}} {
+
+  # Closes few tabs.
+  #   tabID - ID of the current tab or -1 if to close all
+  #   left - true if to close all at left of tabID, true if at right
+
+  if {$tabID!=-1} {
+    lassign [tab_BarID $tabID] barID tabs icur
+  } else {
+    lassign [Bar_GetOptions $barID -tabs] -> tabs
+  }
+  lassign [Bar_GetOptions $barID -cdel] -> cdel
+  for {set i [llength $tabs]} {$i} {} {
+    incr i -1
+    lassign [lindex $tabs $i] tID text wb
+    if {$tabID==-1 || ($left && $i<$icur) || (!$left && $i>$icur)} {
+      if {$cdel eq ""} {
+        catch {destroy $wb}
+        set res 1
+      } else {
+        set res [tab_Close $tID]
+      }
+      if {$res} {
+        set tabs [lreplace $tabs $i $i]
+      }
+    }
+  }
+  bar_Clear $barID
+  Bar_SetOptions $barID -tabs $tabs
+  if {$tabID==-1} {
+    bar_Refill $barID 0 true
+  } else {
+    lassign [tab_BarID $tabID] barID tabs icur
+    bar_Refill $barID $icur $left
+  }
 }
 
 #----------------------------------
@@ -1089,7 +1264,8 @@ proc ::apave::bartabs::tab_Insert {barID txt {pos "end"}} {
   # Returns ID of the created tab.
 
   lassign [Bar_GetOptions $barID -tabs] -> tabs
-  set tab [Tab_NewData $barID [list $txt]]
+  set tab [Tab_NewData $barID [list [Tab_Label $txt]]]
+  if {$tab eq ""} {return -1}
   if {$pos eq "end"} {
     set tabs [lappend tabs $tab]
   } else {
@@ -1097,6 +1273,7 @@ proc ::apave::bartabs::tab_Insert {barID txt {pos "end"}} {
   }
   Bar_SetOptions $barID -tabs $tabs
   bar_Refill $barID $pos [expr {$pos ne "end"}]
+  return [lindex $tab 0]
 }
 
 #----------------------------------
