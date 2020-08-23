@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.0a1
+package provide bartabs 1.0a2
 catch {package require tooltip} ;# optional (though necessary everywhere:)
 
 # ______________________ Common data of bartabs _________________________ #
@@ -280,8 +280,9 @@ proc ::bartabs::onButtonRelease {barID x w} {
 
 proc ::bartabs::onPopup {barID tabID X Y} {
 
-  lassign [bar_Cget $barID -wbar -menu -TABS -FGOVER -BGOVER -static] \
-    wbar popup tabs fgo bgo static
+  lassign [bar_Cget $barID \
+    -wbar -menu -TABS -FGOVER -BGOVER -fgmark -bgmark -marktabs -static] \
+    wbar popup tabs fgo bgo fgmark bgmark marktabs static
   set textcur [tab_Cget $tabID -text]
   set pop $wbar.popupMenu
   if {[winfo exist $pop]} {destroy $pop}
@@ -309,6 +310,7 @@ proc ::bartabs::onPopup {barID tabID X Y} {
             lassign $tab tID text
             if {$tID==$tabID} {set fg "-foreground $fgo -background $bgo"
             } else            {set fg ""}
+            append fg [Tab_MarkAttrs $barID $tID]
             $pop.$menu add command -label $text -command \
               "::bartabs::tab_Show $tID" {*}$fg
           }
@@ -336,24 +338,24 @@ proc ::bartabs::Aux_WidgetWidth {w} {
 
 proc ::bartabs::Aux_InitDraw {barID} {
 
-  # Auxiliary procedure used to initialize the cycles drawing tabs.
+  # Auxiliary procedure used before the cycles drawing tabs.
   #   barID - ID of the tab's bar
 
   set fgo [ttk::style configure . -selectforeground]
   set bgo [ttk::style configure . -selectbackground]
   bar_Configure $barID -FGOVER $fgo -BGOVER $bgo  ;# the options may be themed
   lassign [bar_Cget $barID \
-    -wneed -tleft -hidearrows -TABS -WWID -BD -wbase -wbar -arrlen] \
+    -WNEED -tleft -hidearrows -TABS -WWID -BD -wbase -wbar -ARRLEN] \
     bwidth tleft hidearr tabs wwid bd wbase wbar arrlen
-  #if {$wbase eq ""} {set wbase $wbar}
   lassign $wwid wframe wlarr
   if {$arrlen eq ""} {
     set arrlen [winfo reqwidth $wlarr]
-    bar_Configure $barID -wbase $wbase -arrlen $arrlen
-    bar_Configure $barID -wneed $bwidth
+    bar_Configure $barID -wbase $wbase -ARRLEN $arrlen
+    if {$wbase eq ""} {set wbase .}
+    bar_Configure $barID -WNEED $bwidth
     bind $wbase <Configure> [list + ::bartabs::bar_NeedRedraw $barID]
   }
-  set bwidth [Bar_CalcWidth $barID]
+  set bwidth [Bar_Width $barID]
   set vislen [expr {$tleft || !$hidearr ? $arrlen : 0}]
   set llen [llength $tabs]
   return [list $bwidth $vislen $bd $arrlen $llen $tleft $fgo $bgo $hidearr $tabs $wframe]
@@ -398,7 +400,7 @@ proc ::bartabs::Aux_CheckTabVisible { \
 
 proc ::bartabs::Aux_EndDraw {barID tleft tright llen tabs fgo bgo} {
 
-  # Auxiliary procedure used to initialize the cycles drawing tabs.
+  # Auxiliary procedure used after the cycles drawing tabs.
   #   barID - ID of the tab's bar
 
   Bar_ArrowsState $barID $tleft [expr {$tright < ($llen-1)}]
@@ -409,8 +411,6 @@ proc ::bartabs::Aux_EndDraw {barID tleft tright llen tabs fgo bgo} {
 }
 
 # _____________________ Internal procedures for tabs ____________________ #
-
-#----------------------------------
 
 proc ::bartabs::Tab_Create {barID tabID w text} {
 
@@ -556,6 +556,24 @@ proc ::bartabs::Tab_Font {barID} {
 
 #----------------------------------
 
+proc ::bartabs::Tab_MarkAttrs {barID tabID} {
+
+  # Gets attributes of marks.
+  #   barID - ID of the bar
+  #   tabID - ID of the current tab
+  # Returns attributes of marks or empty string.
+
+  lassign [bar_Cget $barID -MARKTABS -fgmark -bgmark] marktabs fgm bgm
+  set res ""
+  if {[lsearch $marktabs $tabID]>-1} {
+    set res " -foreground $fgm"
+    if {$bgm ne ""} {append res " -background $bgm"}
+  }
+  return $res
+}
+
+#----------------------------------
+
 proc ::bartabs::Tab_MarkBar {barID {tabID -1}} {
 
   # Marks the tabs of a bar with color & underlining.
@@ -575,9 +593,8 @@ proc ::bartabs::Tab_MarkBar {barID {tabID -1}} {
         set font "$opt {$val}"
       }
       $wb1 configure {*}$font
-      if {[lsearch $marktabs $tID]>-1} {
-        $wb1 configure -foreground $fgm
-        if {$bgm ne ""} {$wb1 configure -background $bgm}
+      if {[set attrs [Tab_MarkAttrs $barID $tID]] ne ""} {
+        $wb1 configure {*}$attrs
       } else {
         $wb1 configure \
           -foreground [ttk::style lookup TLabel -foreground] \
@@ -705,7 +722,7 @@ proc ::bartabs::Bar_Data {barNewInfo} {
       -WWID { ;# tab's widgets (inside use)
       }
       default {
-        continue  ;# this might return an error instead
+        return -code error "bartabs: incorrect option $optnam"
       }
     }
     dict set barinfo $optnam $optval
@@ -819,14 +836,10 @@ proc ::bartabs::Bar_ScrollRight {barID} {
     # remove widget names from the current tab
     set tabs [lreplace $tabs $i $i [Tab_Info $ID1 [list $text1]]]
   }
-  if {$tleft<($llen-1)} {incr tleft}
-  set tright end
+  if {$tright<($llen-1)} {incr tright}
   bar_Configure $barID -TABS $tabs -tleft $tleft -tright $tright
-  ::bartabs::bar_Refill $barID $tleft yes
-  if {$sccur} { # 'tright' may be corrected in bar_Refill
-    set tright [bar_Cget $barID -tright]
-    tab_Select [lindex $tabs $tright 0]
-  }
+  ::bartabs::bar_Refill $barID $tright no
+  if {$sccur} {tab_Select [lindex $tabs $tright 0]}
 }
 
 #----------------------------------
@@ -940,22 +953,24 @@ proc ::bartabs::Bar_Command {barID tabID opt} {
 
 #----------------------------------
 
-proc ::bartabs::Bar_CalcWidth {barID} {
+proc ::bartabs::Bar_Width {barID} {
 
   # Calculates the width of a bar to place tabs.
   #   barID - ID of the bar
+  # Returns the width of bar.
 
   lassign [bar_Cget $barID \
-    -tleft -tright -TABS -wbase -wbar -arrlen -hidearrows -WWID -bwidth] \
+    -tleft -tright -TABS -wbase -wbar -ARRLEN -hidearrows -WWID -bwidth] \
     tleft tright tabs wbase wb arrlen hidearrows wwid bwidth1
+  set iarr 2
+  if {$hidearrows} {  ;# how many scrolling arrow are visible?
+    if {!$tleft} {incr iarr -1}
+    if {$tright==([llength $tabs]-1)} {incr iarr -1}
+  }
+  set minus2len [expr {-$iarr*$arrlen}]
   if {[set wbase_exist [winfo exists $wbase]]} {
     # 'wbase' is a base widget to get the bartabs' width from
-    set iarr 2
-    if {$hidearrows} {  ;# how many scrolling arrow are visible?
-      if {!$tleft} {incr iarr -1}
-      if {$tright==([llength $tabs]-1)} {incr iarr -1}
-    }
-    set bwidth2 [expr {[Aux_WidgetWidth $wbase]-$iarr*$arrlen}]
+    set bwidth2 [expr {[Aux_WidgetWidth $wbase]+$minus2len}]
     set wbase_exist [expr {$bwidth2>1}]
   }
   if {$bwidth1 eq "" || $bwidth1<=1} {set bwidth1 0}
@@ -966,8 +981,12 @@ proc ::bartabs::Bar_CalcWidth {barID} {
     # otherwise, get the bartabs' width from -bwidth
     set bwidth [expr {$wbase_exist ? min($bwidth1,$bwidth2) : $bwidth1}]
   }
+  if {[set winw [winfo width .]]<2} {set winw [winfo reqwidth .]}
+  incr winw $minus2len
   if {$bwidth<=0} { ;# last refuge
-    set bwidth [expr {max([winfo width .],[winfo reqwidth .],[winfo reqwidth $wb],[winfo width $wb])}]
+    set bwidth [expr {max($winw,[winfo reqwidth $wb],[winfo width $wb])}]
+  } elseif {$wbase eq "" && $bwidth1 && $winw>1 && $bwidth1>$winw} {
+    set bwidth $winw
   }
   return $bwidth
 }
@@ -1043,8 +1062,6 @@ proc ::bartabs::bar_Refill {barID itab left} {
   #   itab - index of tab
   #   left - if "yes", the bar is filled from the left to the right
 
-  variable btData
-  lassign [bar_Cget $barID -FGOVER -BGOVER] fgo bgo
   bar_Clear $barID
   if {$left} {
     bar_FillFromLeft $barID $itab
@@ -1122,7 +1139,7 @@ proc ::bartabs::bar_Create {barInfo} {
 
 #----------------------------------
 
-proc ::bartabs::bar_Redraw {barID {doupdate yes}} {
+proc ::bartabs::bar_Draw {barID {doupdate yes}} {
 
   # Draws the bar tabs. Used at changing their contents.
   #   barID - ID of the bar
@@ -1150,12 +1167,12 @@ proc ::bartabs::bar_Redraw {barID {doupdate yes}} {
 
 #----------------------------------
 
-proc ::bartabs::bar_RedrawAll {} {
+proc ::bartabs::bar_DrawAll {} {
 
   # Redraws all tab bars.
 
   variable btData
-  dict for {barID barInfo} $btData {bar_Redraw $barID no}
+  dict for {barID barInfo} $btData {bar_Draw $barID no}
 }
 
 #----------------------------------
@@ -1165,11 +1182,11 @@ proc ::bartabs::bar_NeedRedraw {barID} {
   # Checks for resizing the bar and redraws it, if needed.
   #   barID - ID of the bar
 
-  lassign [bar_Cget $barID -wbase -wneed -arrlen] wbase wneed arrlen
-  set ww [Bar_CalcWidth $barID]
+  lassign [bar_Cget $barID -wbase -WNEED -ARRLEN] wbase wneed arrlen
+  set ww [Bar_Width $barID]
   if {$wneed != $ww} {
-    bar_Configure $barID -wneed $ww
-    bar_Redraw $barID no
+    bar_Configure $barID -WNEED $ww
+    bar_Draw $barID no
   }
 }
 
@@ -1184,7 +1201,7 @@ proc ::bartabs::bar_Update {barID {tabID -1}} {
   if {$tabID > -1} {lassign [tab_BarID $tabID] barID}
   bar_Clear $barID
   if {$tabID == -1} {
-    bar_Redraw $barID
+    bar_Draw $barID
   } else {
     tab_Show $tabID
   }
@@ -1446,7 +1463,7 @@ proc ::bartabs::tab_Configure {tabID args} {
   # Sets values of options of a tab.
   #   tabID - ID of the tab
   #   args - a list of pairs "option value", e.g. {-text "New name"}
-  # To make the changes be active, bar_Redraw or tab_Show is called.
+  # To make the changes be active, bar_Draw or tab_Show is called.
 
   lassign [tab_BarID $tabID] barID tabs i
   set tab [lindex $tabs $i]

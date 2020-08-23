@@ -82,7 +82,7 @@ pack $l2 -anchor sw -pady 10
 pack $w2 -expand 1 -fill x -anchor n
 set bw [winfo reqwidth $l1]
 
-set bar1 [list -tleft 1 -tright 5 -fgover #FFFFFF -bgover #8B8C85 -wbar $w1 \
+set bar1 [list -tleft 1 -tright 5 -wbar $w1 \
   -bwidth $bw -hidearrows yes -relief sunken  -static 1 \
   -menu [list sep "com {Append $::noname} {::TestAdd %t} {} ::TestDsbl" sep \
   "com {Switch -static option} {::TestSwitch %b %t -static}" \
@@ -107,21 +107,21 @@ for {set n 0} {$n<10} {incr n} {
 
 ::bartabs::bar_Create $bar1
 ::bartabs::bar_Create $bar2
-::bartabs::bar_RedrawAll
+::bartabs::bar_DrawAll
 
 ####### some mimicring actions with bars & tabs:
-
-#toplevel .mimi
-#label .mimi.l -text "\n\n <== Please wait 5 seconds\n\n <== while seeing this test.\n\n" -fg white -bg maroon -font "-weight bold"
-#pack .mimi.l
-#update
-#lassign [split [winfo geometry .] x+] w h x y
-#lassign [split [winfo geometry .mimi] x+] w2
-#wm geometry .mimi +[expr {$x+$w-$w2}]+$y
-#after 1000 {::bartabs::tab_Show 5 ; ::bartabs::tab_Show 15}
-#after 2000 {::bartabs::tab_Mark 12 15 18 19 20}
-#after 3000 {::bartabs::tab_UnMark 19 20}
-#after 4000 {::bartabs::tab_Insert 1 "Button 0.5" 1}
+update
+toplevel .mimi
+label .mimi.l -text "\n\n <== Please wait 5 seconds\n\n <== while seeing this test.\n\n" -fg white -bg maroon -font "-weight bold"
+pack .mimi.l
+update
+lassign [split [winfo geometry .] x+] w h x y
+lassign [split [winfo geometry .mimi] x+] w2
+wm geometry .mimi +[expr {$x+$w-$w2}]+$y
+after 1000 {::bartabs::tab_Show 5 ; ::bartabs::tab_Show 15}
+after 2000 {::bartabs::tab_Mark 12 15 18 19 20}
+after 3000 {::bartabs::tab_UnMark 19 20}
+after 4000 {::bartabs::tab_Insert 1 "Button 0.5" 1}
+after 4500 {::bartabs::tab_Configure 12 -text "==12th tab==" ; ::bartabs::tab_Show 12}
 #after 5000 {::bartabs::tab_Close 19}
-#after 5010 {if {[winfo exists .mimi]} {destroy .mimi}}
-#after 3000 {::bartabs::tab_Configure 12 -text "==12th tab==" ; ::bartabs::tab_Show 12}
+after 5010 {if {[winfo exists .mimi]} {destroy .mimi}}
