@@ -1,5 +1,5 @@
 
-package ifneeded bartabs 1.0a2 [list source [file join $dir bartabs.tcl]]
+package ifneeded bartabs 1.0a5 [list source [file join $dir bartabs.tcl]]
 
 # short intro (for Ruff! docs generator)
 
@@ -14,8 +14,12 @@ namespace eval bartabs {
     4) moveable
     5) closeable
     6) configureable
-    7) extendable & contractable
+    7) static or changeable
     8) enhanceable with popup menu functions
+
+  Details:
+    [Documentation](https://aplsimple.github.io/en/tcl/bartabs/index.html)
+    [Reference](https://aplsimple.github.io/en/tcl/bartabs/bartabs.html)
 
   }
 

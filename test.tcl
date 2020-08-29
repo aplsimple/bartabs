@@ -41,7 +41,7 @@ proc ::TestSwitch {barID tabID optname} {
   set val [::bartabs::bar_Cget $barID $optname]
   if {[expr {$val eq "" || !$val}]} {set val yes} {set val no}
   ::bartabs::bar_Configure $barID $optname $val
-  if {$optname in {"-static"}} {::bartabs::bar_Update $barID}
+  if {$optname in {-static -hidearrows}} {::bartabs::bar_Update $barID}
   set bwidth [::bartabs::bar_Cget $barID -width]
   set twidth [::bartabs::tab_Cget $tabID -width]
   tk_messageBox -title "Info" -message "  \nThe \"$optname\" option is \"$val\"." \
@@ -58,44 +58,87 @@ proc ::TestComm {oper args} {
 
 #----------------------------------
 
+proc ::TestViewSel {barID} {
+
+  set sellist ""
+  lassign [::bartabs::tab_SelList $barID] fewsel tcurr
+  foreach tabID $fewsel {
+    set text [::bartabs::tab_Cget $tabID -text]
+    append sellist "tabID: $tabID, label: $text\n"
+  }
+  set text [::bartabs::tab_Cget $tcurr -text]
+  tk_messageBox -title "Info" -message "Selected tabs:\n\n$sellist" \
+    -detail "Current tab: tabID: $tcurr, label: $text\n\nClick on a tab while pressing Ctrl\nto select few tabs." -icon info -type ok
+}
+
+#----------------------------------
+
 proc ::TestDsbl {tabID menuitem} {
   set barID [lindex [::bartabs::tab_BarID $tabID] 0]
   set static [::bartabs::bar_Cget $barID -static]
   return [expr {$static && $menuitem eq "Append $::noname"}]
 }
 
+proc ::CalcWidth3 {barID} {
+
+  if {[::bartabs::bar_Exists $barID]} {
+    lassign [::bartabs::bar_Cget $barID -bwidth] wneed
+    set ww [expr {[winfo width .]-[winfo width $::l3]-40}]
+    if {$wneed != $ww} {
+      ::bartabs::bar_Configure $barID -bwidth $ww
+      ::bartabs::bar_Draw $barID no
+    }
+  }
+}
+
 #----------------------------------
 
 set ::noname "<No name>"
-wm minsize . 200 20
+wm minsize . 200 170
 set l1 .l1
 set l2 .l2
 set w1 .f1
 set w2 .f2
+set w3 .f3
+set l3 $w3.l3
+set w4 .f4
+set w5 $w4.f5
 ttk::label $l1 -text [string repeat "0123456789" 6]
-ttk::label $l2 -text [string repeat "0123456789" 11]
+ttk::label $l2 -text [string repeat "0123456789" 12]
 ttk::frame $w1
 ttk::frame $w2
+ttk::frame $w3
+ttk::label $l3 -text [string repeat "0123456789" 4]
+ttk::frame $w4
+ttk::frame $w5
 pack $l1 -anchor sw -pady 10
-pack $w1 -anchor w
+pack $w1 -side top -anchor w
 pack $l2 -anchor sw -pady 10
-pack $w2 -expand 1 -fill x -anchor n
+pack $w2 -side top -expand 1 -fill x
+pack $l3
+pack $w3 -side left -anchor w
+pack $w5 -anchor e -expand 1 -fill x
+pack $w4 -side left -after $w3 -expand 1 -fill x -anchor e
 set bw [winfo reqwidth $l1]
 
-set bar1 [list -tleft 1 -tright 5 -wbar $w1 \
-  -bwidth $bw -hidearrows yes -relief sunken  -static 1 \
+set bar1 [list -tleft 1 -tright 5 -wbar $w1 -fgsel "" \
+  -bwidth $bw -hidearrows yes -relief sunken  -static 1 -tiplen -1 \
   -menu [list sep "com {Append $::noname} {::TestAdd %t} {} ::TestDsbl" sep \
   "com {Switch -static option} {::TestSwitch %b %t -static}" \
   "com {Switch -scrollsel option} {::TestSwitch %b %t -scrollsel}" \
   "com {Switch -hidearrows option} {::TestSwitch %b %t -hidearrows}"] ]
 
-set bar2 [list -tleft 3 -tright end \
+set bar2 [list  -wbar $w2 -wbase $l2 -lablen 11 -expand 0 \
+   -tleft 3 -fgsel black -bgsel #999999 \
    -cnew {::TestComm new %b %t {%l}} \
    -cmov {::TestComm mov %b %t {%l}} \
    -csel {::TestComm sel %b %t {%l}} \
-   -cdel {::TestDel %b %t {%l}} -wbar $w2 -wbase $l2 -maxlen 11 \
+   -cdel {::TestDel %b %t {%l}} \
    -font "-family Helvetica -size 12" -scrollsel 1 \
-   -menu [list sep "com {Append $::noname} {::TestAdd %t}"]]
+   -menu [list sep "com {Append $::noname} {::TestAdd %t}" \
+   "com {View selected} {::TestViewSel %b}"]]
+
+set bar3 [list -wbar $w5 -wproc {::CalcWidth3 %b}]
 
 lappend bar1 -tab "#0 tab item" ;# to test for duplicates
 lappend bar2 -tab "#0 tab item" -tab "Item 1 \""
@@ -103,16 +146,18 @@ for {set n 0} {$n<10} {incr n} {
   set tab "#$n tab item[string repeat ~ [expr $n/2]]"
   lappend bar1 -tab $tab
   lappend bar2 -tab $tab
+  lappend bar3 -tab $tab
 }
 
 ::bartabs::bar_Create $bar1
 ::bartabs::bar_Create $bar2
+::bartabs::bar_Create $bar3
 ::bartabs::bar_DrawAll
 
 ####### some mimicring actions with bars & tabs:
 update
 toplevel .mimi
-label .mimi.l -text "\n\n <== Please wait 5 seconds\n\n <== while seeing this test.\n\n" -fg white -bg maroon -font "-weight bold"
+label .mimi.l -text "\n\n <== Please wait 5 seconds\n\n <== while seeing this test.\n\n" -fg #800080 -font "-size 12"
 pack .mimi.l
 update
 lassign [split [winfo geometry .] x+] w h x y
