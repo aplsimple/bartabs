@@ -7,21 +7,18 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.0b4
+package provide bartabs 1.0b7
 catch {package require tooltip} ;# optional (though necessary everywhere:)
 
-# ______________________ Common data of bartabs _________________________ #
+# __________________ Common data of bartabs:: namespace _________________ #
 
-namespace eval bts {
-
-  # dictionary of bars & tabs
-  variable btData [dict create]
+namespace eval bartabs {
 
   # IDs for new bars & tabs
   variable NewBarID 0 NewTabID 0 NewTabNo 0
 
   # images used by bartabs, made by base64
-  image create photo bts::ImgLeftArr \
+  image create photo ::bartabs::ImgLeftArr \
   -data {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADAFBMVEUAAAD/AAAA/wD//wAAAP//
 AP8A///////b29u2traSkpJtbW1JSUkkJCTbAAC2AACSAABtAABJAAAkAAAA2wAAtgAAkgAAbQAA
 SQAAJADb2wC2tgCSkgBtbQBJSQAkJAAAANsAALYAAJIAAG0AAEkAACTbANu2ALaSAJJtAG1JAEkk
@@ -39,7 +36,7 @@ tm1tkklJbSQkSQC2/5KS221ttklJkiQkbQD/tgDbkgC2bQCSSQD/ALbbAJK2AG2SAEkAtv8AktsA
 bbYASZIAAAAAAADPKgIEAAAAgElEQVQ4y52T0QnAMAhEr6GjuIzukvXiMHEX+xUopZVrAvlR3sOT
 BJkJ9qpqPmsN5DGzfKs3Fu69Y0tgZqmqn/3GwFsCBgaAs4JFBO4OEUFEcBOYWYpICVER7nBEYM7J
 CcYYRwVQE/yRfEZgJeU7WBJ33xMsyXOpv//CkmwLKskFTjp4qfk0WXsAAAAASUVORK5CYII=}
-  image create photo bts::ImgRightArr \
+  image create photo ::bartabs::ImgRightArr \
   -data {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADAFBMVEUAAAD/AAAA/wD//wAAAP//
 AP8A///////b29u2traSkpJtbW1JSUkkJCTbAAC2AACSAABtAABJAAAkAAAA2wAAtgAAkgAAbQAA
 SQAAJADb2wC2tgCSkgBtbQBJSQAkJAAAANsAALYAAJIAAG0AAEkAACTbANu2ALaSAJJtAG1JAEkk
@@ -58,7 +55,7 @@ bbYASZIAAAAAAADPKgIEAAAAjElEQVQ4y52RwQ3EMAgEN9alE5rBvTjlmSauAyglEveNEkLIIfEx
 mtGC4e44NjP7+S3rhqB6745ihYIxRlnS7gbMXJKkgoqkZcOKJBSYGVQVIgIiSiXtaUczAxGBiELJ
 J4JU9SL56wZHoZnhu29rKUEEzzmX1wme4DSBiABACqffWIHTFSrwraAKA8APNup1woreOEgAAAAA
 SUVORK5CYII=}
-  image create photo bts::ImgNone \
+  image create photo ::bartabs::ImgNone \
   -data {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADAFBMVEUAAAD/AAAA/wD//wAAAP//
 AP8A///////b29u2traSkpJtbW1JSUkkJCTbAAC2AACSAABtAABJAAAkAAAA2wAAtgAAkgAAbQAA
 SQAAJADb2wC2tgCSkgBtbQBJSQAkJAAAANsAALYAAJIAAG0AAEkAACTbANu2ALaSAJJtAG1JAEkk
@@ -93,7 +90,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABjmgMdwQiP4QAAAABJ
 RU5ErkJggg==}
-  image create photo bts::ImgClose \
+  image create photo ::bartabs::ImgClose \
   -data {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADAFBMVEUAAAD/AAAA/wD//wAAAP//
 AP8A///////b29u2traSkpJtbW1JSUkkJCTbAAC2AACSAABtAABJAAAkAAAA2wAAtgAAkgAAbQAA
 SQAAJADb2wC2tgCSkgBtbQBJSQAkJAAAANsAALYAAJIAAG0AAEkAACTbANu2ALaSAJJtAG1JAEkk
@@ -116,68 +113,101 @@ wE4nN4X9rZoHZk4tqIjYIzDzAEky9Lq55yQZImo0PIKcidPJg06/vr2nZtKieh27nQ6t3YPz1Z0o
 yROnlsp+4xkRFgAuSmqo6nf+ATq/yK22zWynAAAAAElFTkSuQmCC}
 }
 
-# _____________________ Internal procedures for tabs ____________________ #
+# __________________ Declaring bartabs class hierarchy __________________ #
 
-proc bts::Tab_Create {barID tabID w text} {
+oo::class create ::bartabs::Tab {
+}
+
+oo::class create ::bartabs::Bar {
+  superclass ::bartabs::Tab
+}
+
+oo::class create ::bartabs::Bars {
+  superclass ::bartabs::Bar
+}
+
+# ________________________ Private methods of Tab _______________________ #
+
+oo::define ::bartabs::Tab {
+
+method My {ID} {
+  # Creates a caller of method.
+  #   ID - ID of the caller
+  # Returns the caller's name.
+
+  oo::objdefine [self] "method $ID {args} {set m \[lindex \$args 0\]
+if {\$m in {cget configure} && {[string range $ID 0 2]} eq {tab}} {
+set args \[lreplace \$args 0 0 Tab_\$m\]}
+return \[my {*}\$args\]}"
+}
+#__________
+
+method ID {} {
+  # Gets ID of caller.
+
+  return [lindex [uplevel 1 {self caller}] 2]
+}
+#__________
+
+method IDs {TID} {
+  # Returns a list of tab and bar IDs.
+  #   TID tab's ID
+
+  return [list $TID [my $TID cget -BID]]
+}
+#__________
+
+method Tab_Create {BID TID w text} {
   # Creates a tab widget (consisting of a frame, a label, a button).
-  #   barID - ID of the tab's bar
-  #   tabID - ID of the tab
+  #   BID - bar ID
+  #   TID - tab ID
   #   w - a parent frame's name
   #   text - a text of tab
   # Returns a list of created widgets of the tab (frame, label, button).
 
-  variable NewTabNo
-  lassign [bar_Cget $barID -relief -bd -padx -pady] relief bd padx pady
+  lassign [my $BID cget -relief -bd -padx -pady] relief bd padx pady
   set bd [expr {$bd?1:0}]
-  lassign [tab_Cget $tabID -wb -wb1 -wb2] wb wb1 wb2
-  if {![Tab_Is $wb]} {
+  lassign [my $TID cget -wb -wb1 -wb2] wb wb1 wb2
+  if {![my Tab_Is $wb]} {
     if {$wb eq ""} {
-      set NewTabNo [expr {($NewTabNo+1)%1000000000}]
-      set wb $w.t[format %09d $tabID]$NewTabNo
+      set ::bartabs::NewTabNo [expr {($::bartabs::NewTabNo+1)%10000000}]
+      set wb $w.$TID[format %07d $::bartabs::NewTabNo]
       set wb1 $wb.l
       set wb2 $wb.b
     }
-    tab_Configure $tabID -wb $wb -wb1 $wb1 -wb2 $wb2
+    my $TID configure -wb $wb -wb1 $wb1 -wb2 $wb2
     ttk::frame $wb -relief $relief -borderwidth $bd
     ttk::label $wb1 -relief flat -padding "$padx $pady $padx $pady" \
-      {*}[Tab_Font $barID]
-    ttk::button $wb2 -style ClButton$barID -image bts::ImgNone \
-      -command [list bts::tab_Close $tabID] -takefocus 0
+      {*}[my Tab_Font $BID]
+    ttk::button $wb2 -style ClButton$BID -image ::bartabs::ImgNone \
+      -command [list [self] $TID tab_Close] -takefocus 0
   } else {
     $wb configure -relief $relief -borderwidth $bd
     $wb1 configure -relief flat -padding "$padx $pady $padx $pady" \
-      {*}[Tab_Font $barID]
+      {*}[my Tab_Font $BID]
   }
-  lassign [Tab_TextEllipsed $barID $text] text ttip
+  lassign [my Tab_TextEllipsed $BID $text] text ttip
   catch {tooltip::tooltip $wb1 $ttip; tooltip::tooltip $wb2 $ttip}
   $wb1 configure -text $text
-  if {[Tab_Iconic $barID]} {
+  if {[my Tab_Iconic $BID]} {
     $wb2 configure -state normal
   } else {
     $wb2 configure -state disabled -image {}
   }
   return [list $wb $wb1 $wb2]
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_Label {label} {
-  # Prepares a label to be shown in a tab (excludes special characters).
-  #   label - a tab's label
-
-  return [string map {\" \'} $label]
-}
-#----------------------------------
-
-proc bts::Tab_DictItem {tabID {data ""}} {
+method Tab_DictItem {TID {data ""}} {
   # Gets a tab item data from a dictionary item (ID + data).
-  #   tabID - ID of the tab or the tab item (ID + data).
+  #   TID - tab ID or the tab item (ID + data).
   #   data - the tab's data (list of option-value pairs)
-  # If 'data' argument omitted, tabID is a dictionary item (ID + data).
+  # If 'data' argument omitted, TID is a dictionary item (ID + data).
   # If the tab's attribute is absent, it's considered being empty ("").
   # Returns a list of attributes: "ID, text, wb, wb1, wb2, pf".
 
-  if {$data eq ""} {lassign $tabID tabID data}
-  set res [list $tabID]
+  if {$data eq ""} {lassign $TID TID data}
+  set res [list $TID]
   foreach a {-text -wb -wb1 -wb2 -pf} {
     if {[dict exists $data $a]} {
       lappend res [dict get $data $a]
@@ -187,11 +217,11 @@ proc bts::Tab_DictItem {tabID {data ""}} {
   }
   return $res
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_ItemDict {tabID text {wb ""} {wb1 ""} {wb2 ""} {pf ""}} {
+method Tab_ItemDict {TID text {wb ""} {wb1 ""} {wb2 ""} {pf ""}} {
   # Gets a dictionary item (ID + data) from a tab item data.
-  #   tabID - ID of the tab
+  #   TID - tab ID
   #   text - text of tab's label;
   #   wb - tab's frame
   #   wb1 - tab's label
@@ -199,53 +229,81 @@ proc bts::Tab_ItemDict {tabID text {wb ""} {wb1 ""} {wb2 ""} {pf ""}} {
   #   pf - "p" if the tab under pack or "" if pack forget
   # Returns a dictionary tab item containing ID and a dictionary of attributes.
 
-  return [list $tabID [list -text $text -wb $wb -wb1 $wb1 -wb2 $wb2 -pf $pf]]
+  return [list $TID [list -text $text -wb $wb -wb1 $wb1 -wb2 $wb2 -pf $pf]]
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_Data {barID text} {
+method Tab_Data {BID text} {
   # Creates data of a new tab.
-  #   barID - ID of the new tab's bar
+  #   BID - ID of the new tab's bar
   #   text - the new tab's text
   # For sure, the bar is checked for a duplicate of the 'text'.
   # Returns a tab item or "" (if duplicated).
 
-  variable NewTabID
-  if {[tab_IDbyName $barID $text]>-1} {return ""}
-  return [Tab_ItemDict [incr NewTabID] $text]
+  variable btData
+  if {[dict exists $btData $BID] && [my $BID getTabID $text] ne ""} {return ""}
+  my My tab[incr ::bartabs::NewTabID]
+  return [my Tab_ItemDict tab$::bartabs::NewTabID $text]
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_Bindings {barID} {
+method Tab_BID {TID {act ""}} {
+  # Gets BID from TID.
+  #   TID - tab ID
+  #   act - if "check", only checks the existance of TID
+  # If 'act' is "check" and a bar not found, -1 is returned, otherwise bar ID.
+  # Returns a list containing 1) bar's ID (or -1 if no bar found) 2) index of
+  # the tab in tabs' list 3) the found tab data.
+
+  variable btData
+  set BID ""
+  dict for {bID bInfo} $btData {
+    set tabs [my $bID cget -TABS]
+    if {[set i [my Aux_IndexInList $TID $tabs]] > -1} {
+      set BID $bID
+      break
+    }
+  }
+  if {$act eq "check"} {return $BID}
+  if {$BID eq ""} {
+    return -code error "bartabs: tab ID $TID not found in the bars"
+  }
+  return [list $BID $i [lindex $tabs $i]]
+}
+#__________
+
+method Tab_Bindings {BID} {
   # Sets bindings on events of tabs.
-  #   barID - ID of the tab's bar
+  #   BID - bar ID
 
-  lassign [bar_Cget $barID -static -FGOVER -BGOVER] static fgo bgo
-  foreach tab [tab_List $barID] {
-    lassign $tab tabID text wb wb1 wb2
-    if {[Tab_Is $wb]} {
-      set ctrlBP "bts::onCtrlButton $barID $tabID ; break"
+  lassign [my $BID cget -static -FGOVER -BGOVER] static fgo bgo
+  foreach tab [my $BID listTab] {
+    lassign $tab TID text wb wb1 wb2
+    if {[my Tab_Is $wb]} {
+      set bar "[self] $BID"
+      set tab "[self] $TID"
+      set ctrlBP "$tab OnCtrlButton ; break"
       foreach w [list $wb $wb1 $wb2] {
-        bind $w <Enter> "bts::onEnterTab $barID $wb1 $wb2 $fgo $bgo"
-        bind $w <Leave> "bts::onLeaveTab $barID $tabID $wb1 $wb2"
-        bind $w <Button-3> "bts::onPopup $barID $tabID %X %Y"
+        bind $w <Enter> "$bar OnEnterTab $wb1 $wb2 $fgo $bgo"
+        bind $w <Leave> "[self] $TID OnLeaveTab $wb1 $wb2"
+        bind $w <Button-3> "[self] $TID OnPopup %X %Y"
         bind $w <Control-ButtonPress> $ctrlBP
       }
       bind $wb <Control-ButtonPress> $ctrlBP
-      bind $wb <ButtonPress> "bts::onButtonPress $barID $wb1 {}"
-      bind $wb1 <ButtonPress> "bts::onButtonPress $barID $wb1 %x"
-      bind $wb1 <ButtonRelease> "bts::onButtonRelease $barID $wb1 %x"
-      bind $wb1 <Motion> "bts::onButtonMotion $barID $wb1 %x %y"
+      bind $wb <ButtonPress> "[self] $BID OnButtonPress $wb1 {}"
+      bind $wb1 <ButtonPress> "[self] $BID OnButtonPress $wb1 %x"
+      bind $wb1 <ButtonRelease> "[self] $BID OnButtonRelease $wb1 %x"
+      bind $wb1 <Motion> "[self] $BID OnButtonMotion $wb1 %x %y"
     }
   }
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_Font {barID} {
+method Tab_Font {BID} {
   # Gets a font option for a tab label.
-  #   barID - ID of the bar
+  #   BID - bar ID
 
-  set font [bar_Cget $barID -font]
+  set font [my $BID cget -font]
   if {$font eq ""} {
     if {[set font [ttk::style configure TLabel -font]] eq ""} {
       set font TkDefaultFont
@@ -254,21 +312,21 @@ proc bts::Tab_Font {barID} {
   }
   return "-font {$font}"
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_ImageMarkAttrs {barID tabID {withbg yes} {wb2 ""}} {
+method Tab_ImageMarkAttrs {BID TID {withbg yes} {wb2 ""}} {
   # Gets image & mark attributes of marks.
-  #   barID - ID of the bar
-  #   tabID - ID of the current tab
+  #   BID - bar ID
+  #   TID - ID of the current tab
+  #   withbg - if true, gets also background
   #   wb2 - path to a button
-  #   withbg - if true, to get also background
   # Returns string of mark attributes or empty string.
 
-  lassign [bar_Cget $barID \
+  lassign [my $BID cget \
     -marktabs -imagemark -fgmark -bgmark -IMAGETABS -FGMAIN -BGMAIN] \
     marktabs imagemark fgm bgm imagetabs fgmain bgmain
   set res ""
-  if {[lsearch $marktabs $tabID]>-1} {
+  if {[lsearch $marktabs $TID]>-1} {
     if {$imagemark eq ""} {
       if {$fgm eq ""} {set fgm $fgmain}  ;# empty value - no markable tabs
       set res " -foreground $fgm"
@@ -276,15 +334,15 @@ proc bts::Tab_ImageMarkAttrs {barID tabID {withbg yes} {wb2 ""}} {
         if {$bgm eq ""} {set bgm $bgmain}
         append res " -background $bgm"
       }
-      if {$wb2 ne ""} {$wb2 configure -image bts::ImgNone}
+      if {$wb2 ne ""} {$wb2 configure -image ::bartabs::ImgNone}
     }
   } else {
     set imagemark ""
-    set text [tab_Cget $tabID -text] 
+    set text [my $TID cget -text] 
     if {[set i [lsearch -index 0 -exact $imagetabs $text]]>-1} {
       set imagemark [lindex $imagetabs $i 1]
     } elseif {$wb2 ne ""} {
-      $wb2 configure -image bts::ImgNone
+      $wb2 configure -image ::bartabs::ImgNone
     }
   }
   if {$imagemark ne ""} {
@@ -293,9 +351,9 @@ proc bts::Tab_ImageMarkAttrs {barID tabID {withbg yes} {wb2 ""}} {
   }
   return $res
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_SelAttrs {fnt fgsel bgsel} {
+method Tab_SelAttrs {fnt fgsel bgsel} {
   # Gets attributes of selected tab's title.
   #   fnt - original font attributes
   #   fgsel - 'foreground for selection' setting
@@ -319,24 +377,24 @@ proc bts::Tab_SelAttrs {fnt fgsel bgsel} {
   }
   return "$opt {$val}"
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_MarkBar {barID {tabID -1}} {
+method Tab_MarkBar {BID {TID -1}} {
   # Marks the tabs of a bar with color & underlining.
-  #   barID - ID of the bar
-  #   tabID - ID of the current tab
+  #   BID - bar ID
+  #   TID - ID of the current tab
 
-  lassign [bar_Cget $barID -tabcurrent -fgsel -bgsel -FEWSEL -FGMAIN -BGMAIN] \
+  lassign [my $BID cget -tabcurrent -fgsel -bgsel -FEWSEL -FGMAIN -BGMAIN] \
     tID fgs bgs fewsel fgm bgm
-  if {$tabID in {"" "-1"}} {set tabID $tID}
-  foreach tab [tab_List $barID] {
+  if {$TID in {"" "-1"}} {set TID $tID}
+  foreach tab [my $BID listTab] {
     lassign $tab tID text wb wb1 wb2
-    if {[Tab_Is $wb]} {
-      set font [Tab_Font $barID]
-      set selected [expr {$tID == $tabID || [lsearch $fewsel $tID]>-1}]
-      if {$selected} {set font [Tab_SelAttrs $font $fgs $bgs]}
+    if {[my Tab_Is $wb]} {
+      set font [my Tab_Font $BID]
+      set selected [expr {$tID == $TID || [lsearch $fewsel $tID]>-1}]
+      if {$selected} {set font [my Tab_SelAttrs $font $fgs $bgs]}
       $wb1 configure {*}$font
-      set attrs [Tab_ImageMarkAttrs $barID $tID [expr {!$selected}] $wb2]
+      set attrs [my Tab_ImageMarkAttrs $BID $tID [expr {!$selected}] $wb2]
       if {$attrs ne "" && "-image" ni $attrs } {
         $wb1 configure {*}$attrs
       } elseif {!$selected} {
@@ -344,32 +402,32 @@ proc bts::Tab_MarkBar {barID {tabID -1}} {
       }
     }
   }
-  bar_Configure $barID -tabcurrent $tabID
+  my $BID configure -tabcurrent $TID
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_MarkBars {{barID -1} {tabID -1}} {
+method Tab_MarkBars {{BID -1} {TID -1}} {
   # Marks the tabs with color & underlinement.
-  #   barID - ID of the bar (if omitted, all bars are scanned)
-  #   tabID - ID of the current tab
+  #   BID - bar ID (if omitted, all bars are scanned)
+  #   TID - ID of the current tab
 
   variable btData
-  if {$barID == -1} {
-    dict for {barID barInfo} $btData {Tab_MarkBar $barID}
+  if {$BID == -1} {
+    dict for {BID barInfo} $btData {my Tab_MarkBar $BID}
   } else {
-    Tab_MarkBar $barID $tabID
+    my Tab_MarkBar $BID $TID
   }
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_TextEllipsed {barID text {lneed -1}} {
+method Tab_TextEllipsed {BID text {lneed -1}} {
   # Gets a tab's label (possibly ellipsed) and tooltip
-  #   barID - ID of the bar
+  #   BID - bar ID
   #   text - text of tab label
   #   lneed - label length anyway
-  # Returns a list of "label tooltip".
+  # Returns a pair "label tooltip".
 
-  lassign [bar_Cget $barID -lablen -ELLIPSE] lablen ellipse
+  lassign [my $BID cget -lablen -ELLIPSE] lablen ellipse
   if {$lneed ne -1} {set lablen $lneed}
   if {$lablen && [string length $text]>$lablen} {
     set ttip $text
@@ -380,30 +438,29 @@ proc bts::Tab_TextEllipsed {barID text {lneed -1}} {
   }
   return [list $text $ttip]
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_Iconic {barID} {
+method Tab_Iconic {BID} {
   # Gets a flag "tabs with icons".
-  #   barID - ID of the bar
+  #   BID - bar ID
   # Returns "yes", if tabs are supplied with icons.
 
-  lassign [bar_Cget $barID -static -IMAGETABS] static imagetabs
+  lassign [my $BID cget -static -IMAGETABS] static imagetabs
   return [expr {!$static}]
   #return [expr {[llength $imagetabs] || !$static}]
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_Pack {barID tabID wb wb1 wb2} {
-  # Packs the tab widgets.
-  #   barID - ID of the bar
-  #   tabID - ID of the tab
+method Tab_Pack {BID TID wb wb1 wb2} {
+  # Packs a tab widget.
+  #   BID - bar ID
+  #   TID - tab ID
   #   wb - frame
   #   wb1 - label
   #   wb2 - button
 
-  lassign [bar_Cget $barID -static -expand] static expand
-
-  if {[Tab_Iconic $barID]} {
+  lassign [my $BID cget -static -expand] static expand
+  if {[my Tab_Iconic $BID]} {
     pack $wb1 -side left
     pack $wb2 -side left
   } else {
@@ -415,155 +472,542 @@ proc bts::Tab_Pack {barID tabID wb wb1 wb2} {
   } else {
     pack $wb -side left
   }
-  tab_Configure $tabID -pf "p"
+  my $TID configure -pf "p"
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_RemoveLinks {barID tabID {txt ""}} {
+method Tab_RemoveLinks {BID TID {txt ""}} {
   # Removes a tab's links from the internal lists.
-  #   barID - ID of the bar
-  #   tabID - ID of the tab or -1, if for the tab's text only
+  #   BID - bar ID
+  #   TID - tab ID or -1, if for the tab's text only
   #   txt - tab's text
 
-  set imagetabs [bar_Cget $barID -IMAGETABS]
-  if {$tabID>-1} {set txt [tab_Cget $tabID -text]}
+  set imagetabs [my $BID cget -IMAGETABS]
+  if {$TID>-1} {set txt [my $TID cget -text]}
   if {[set i [lsearch -index 0 -exact $imagetabs $txt]]>-1} {
     set imagetabs [lreplace $imagetabs $i $i]
-    bar_Configure $barID -IMAGETABS $imagetabs
+    my $BID configure -IMAGETABS $imagetabs
   }
-  if {$tabID>-1} {tab_Unmark $tabID}
+  if {$TID>-1} {my unmark $TID}
 }
-#----------------------------------
+#__________
 
-proc bts::Tab_MoveBehind {tabID1 tabID2} {
-  # Moves a tab to a new position.
-  #   tabID1 - ID of the moved tab
-  #   tabID2 - ID of a tab the moved tab should be behind
-
-  lassign [tab_BarID $tabID1] barID i1
-  lassign [tab_BarID $tabID2] barID i2
-  if {$i1!=$i2} {
-    set tabs [bar_Cget $barID -TABS]
-    set tab [lindex $tabs $i1]
-    set tabs [lreplace $tabs $i1 $i1]
-    set i [expr {$i1>$i2?($i2+1):$i2}]
-    bar_Configure $barID -TABS [linsert $tabs $i $tab]
-    tab_Show $tabID1 1
-  }
-}
-#----------------------------------
-
-proc bts::Tab_Is {wb} {
+method Tab_Is {wb} {
   # Checks if 'wb' is a path to an existing tab.
   #   wb - path to be checked
 
-    return [expr {$wb ne "" && [winfo exists $wb]}]
+  return [expr {$wb ne "" && [winfo exists $wb]}]
+}
+#__________
+
+method Tab_CloseFew {{TID -1} {left no}} {
+  # Closes few tabs of bar.
+  #   TID - ID of the current tab or -1 if to close all
+  #   left - "yes" if to close all at left of TID, "no" if at right
+
+  set BID [my ID]
+  if {$TID!=-1} {lassign [my Tab_BID $TID] BID icur}
+  set tabs [my $BID listTab]
+  for {set i [llength $tabs]} {$i} {} {
+    incr i -1
+    set tID [lindex $tabs $i 0]
+    if {$TID==-1 || ($left && $i<$icur) || (!$left && $i>$icur)} {
+      my $tID tab_Close no
+    }
+  }
+  my $BID clear
+  if {$TID==-1} {
+    my $BID Refill 0 yes
+  } else {
+    lassign [my Tab_BID $TID] BID icur
+    my $BID Refill $icur $left
+  }
+}
+#__________
+
+method Tab_Cmd {opt} {
+  # Executes a command bound to an action on a tab.
+  #   opt - command option (-csel, -cmov, -cdel)
+  # The commands can include wildcards: %b for bar ID, %t for tab ID,
+  # %l for tab label. 
+  # Returns "yes", if no command set or the command returned "yes".
+
+  variable btData
+  lassign [my IDs [my ID]] TID BID
+  if {[dict exists $btData $BID $opt]} {
+    set com [dict get $btData $BID $opt]
+    if {$TID>-1} {
+      set label [my $TID cget -text]
+    } else {
+      set label ""
+    }
+    set label [string map {\{ ( \} )} $label]
+    set com [string map [list %b $BID %t $TID %l $label] $com]
+    if {[catch {set res [{*}$com]}]} {set res yes}
+    if {$res eq "" || !$res} {return no} ;# chosen "don't"
+  }
+  return yes
+}
+#__________
+
+method Tab_cget {args} {
+  # Gets options of the tab.
+  #   args - list of option names (-text, -wb, -wb1, -wb2)
+  # Returns a list of option values or an option value if args is one option.
+
+  variable btData
+  lassign [my Tab_BID [set TID [my ID]]] BID i tab
+  lassign $tab tID tdata
+  set llen [dict get $btData $BID -LLEN]
+  set res [list]
+  foreach opt $args {
+    switch -- $opt {
+      -BID {lappend res $BID}
+      -text - -wb - -wb1 - -wb2 - -pf {
+        if {[catch {lappend res [dict get $tdata $opt]}]} {
+          lappend res ""
+        }
+      }
+      -index {if {$i<($llen-1)} {lappend res $i} {lappend res end}}
+      -width {  ;# width of tab widget
+        lassign [my Tab_DictItem $tab] tID text wb wb1 wb2
+        if {![my Tab_Is $wb]} {
+          lappend res 0
+        } else {
+          set b1 [ttk::style configure TLabel -borderwidth]
+          if {$b1 eq ""} {set b1 0}
+          lassign [my $BID cget -bd -expand -static] bd expand static
+          set bd [expr {$bd?2*$b1:0}]
+          set b2 [expr {[my Aux_WidgetWidth $wb2]-3}]
+          set expand [expr {$expand||![my Tab_Iconic $BID]?2:0}]
+          lappend res [expr {[my Aux_WidgetWidth $wb1]+$b2+$bd+$expand}]
+        }
+      }
+      default {  ;# user's options
+        if {[catch {lappend res [dict get $tdata $opt]}]} {lappend res ""}
+      }
+    }
+  }
+  if {[llength $args]==1} {return [lindex $res 0]}
+  return $res
+}
+#__________
+
+method Tab_configure {args} {
+  # Sets values of options of a tab.
+  #   args - a list of pairs "option value", e.g. {-text "New name"}
+  # To make the changes be active, bar's draw or tab's show is called.
+
+  lassign [my Tab_BID [set TID [my ID]]] BID i tab
+  lassign $tab tID data
+  foreach {opt val} $args {dict set data $opt $val}
+  set tab [list $TID $data]
+  my $BID configure -TABS [lreplace [my $BID cget -TABS] $i $i $tab]
+}
+#__________
+
+method Tab_BeCurrent {} {
+  # Makes the tab be current.
+
+  if {[set TID [my ID]] in {"" "-1"}} return
+  set BID [my $TID cget -BID]
+  my $TID Tab_Cmd -csel
+  my Tab_MarkBar $BID $TID
+  if {[set wb2 [my $TID cget -wb2]] ne "" && \
+  ![string match "::bartabs::*" [$wb2 cget -image]] &&
+  $TID ni [my $BID listMark]} {
+    $wb2 configure -image ::bartabs::ImgNone
+  }
 }
 
-# _____________________ Internal procedures for bars ____________________ #
+# ____________________________ Event handlers ___________________________ #
 
-proc bts::Bar_Data {barNewInfo} {
+method OnEnterTab {wb1 wb2 fgo bgo} {
+  # Handles the mouse pointer entering a tab.
+  #   wb1 - tab's label
+  #   wb2 - tab's button
+  #   fgo - foreground of "mouse over the tab"
+  #   bgo - background of "mouse over the tab"
+
+  $wb1 configure -foreground $fgo -background $bgo
+  if {[my Tab_Iconic [my ID]]} {$wb2 configure -image ::bartabs::ImgClose}
+}
+#__________
+
+method OnLeaveTab {wb1 wb2} {
+  # Handles the mouse pointer leaving a tab.
+  #   wb1 - tab's label
+  #   wb2 - tab's button
+
+  lassign [my IDs [my ID]] TID BID
+  if {![winfo exists $wb1]} return
+  lassign [my $BID cget -FGMAIN -BGMAIN] fgm bgm
+  $wb1 configure -foreground $fgm -background $bgm
+  my Tab_MarkBars $BID
+  if {"-image" ni [set attrs [my Tab_ImageMarkAttrs $BID $TID 0 $wb2]] && \
+  [my Tab_Iconic $BID]} {
+    $wb2 configure -image ::bartabs::ImgNone
+  }
+}
+#__________
+
+method OnButtonPress {wb1 x} {
+  # Handles the mouse clicking a tab.
+  #   wb1 - tab's label
+  #   x - x position of the mouse pointer
+
+  my [set BID [my ID]] configure -MOVX $x
+  set TID [my $BID getTabID [$wb1 cget -text]]
+  my $TID Tab_BeCurrent
+}
+#__________
+
+method OnButtonMotion {wb1 x y} {
+  # Handles the mouse moving over a tab.
+  #   wb1 - tab's label
+  #   x - x position of the mouse pointer
+  #   y - y position of the mouse pointer
+
+  lassign [my [set BID [my ID]] cget \
+    -static -FGMAIN -FGOVER -BGOVER -MOVWIN -MOVX -MOVX0 -MOVY0] \
+    static fgm fgo bgo movWin movX movx movY0
+  if {$movX eq "" || $static} return
+  # dragging the tab
+  if {![winfo exists $movWin]} {
+    # make the tab's replica to be dragged
+    toplevel $movWin
+    if {[tk windowingsystem] eq "aqua"} {
+      ::tk::unsupported::MacWindowStyle style $movWin help none
+    } else {
+      wm overrideredirect $movWin 1
+    }
+    bind $movWin <Leave> "destroy $movWin"
+    set movx [set movx1 $x]
+    set movX [expr {[winfo pointerx .]-$x}]
+    set movY0 [expr {[winfo pointery .]-$y}]
+    label $movWin.label -text [$wb1 cget -text] \
+      -foreground $fgo -background $bgo  {*}[my Tab_Font $BID]
+    pack $movWin.label -ipadx 1
+    $wb1 configure -foreground $fgm
+    my $BID configure -wb1 $wb1 -MOVX1 $movx1 -MOVY0 $movY0
+  }
+  wm geometry $movWin +$movX+$movY0
+  my $BID configure -MOVX [expr {$movX+$x-$movx}] -MOVX0 $x
+}
+#__________
+
+method OnButtonRelease {wb1o x} {
+  # Handles the mouse releasing a tab.
+  #   wb1o - original tab's label
+  #   x - x position of the mouse pointer
+
+  lassign [my [set BID [my ID]] cget \
+    -MOVWIN -MOVX -MOVX1 -MOVY0 -FGMAIN -wb1 -tleft -tright -wbar -static] \
+    movWin movX movx1 movY0 fgm wb1 tleft tright wbar static
+  my $BID configure -MOVX "" -wb1 ""
+  if {[winfo exists $movWin]} {destroy $movWin}
+  if {$movX eq "" || $wb1o ne $wb1 || $static} return
+  # dropping the tab - find a tab being dropped at
+  $wb1 configure -foreground $fgm
+  lassign [my Aux_InitDraw $BID no] bwidth vislen bd arrlen llen
+  set vislen1 $vislen
+  set vlist [list]
+  set i 0
+  set iw1 -1
+  set tabssav [set tabs [my $BID cget -TABS]]
+  foreach tab $tabs {
+    lassign [my Tab_DictItem $tab] tID text _wb _wb1 _wb2 _pf
+    if {$_pf ne ""} {
+      if {$_wb1 eq $wb1} {
+        set vislen0 $vislen
+        set tab1 $tab
+        set iw1 $i
+        set TID $tID
+      }
+      set wl [expr {[winfo reqwidth $_wb1]+[winfo reqwidth $_wb2]}]
+      lappend vlist [list $i $vislen $wl]
+      incr vislen $wl
+    }
+    incr i
+  }
+  if {$iw1==-1} return  ;# for sure
+  if {![my $TID Tab_Cmd -cmov]} return ;# chosen to not move
+  set vislen2 [expr {$vislen0+$x-$movx1}]
+  foreach vl $vlist {
+    lassign $vl i vislen wl
+    set rightest [expr {$i==$tright && $vislen2>(10+$vislen)}]
+    if {$iw1==($i+1) && $x<0} {incr vislen2 $wl}
+    if {($vislen>$vislen2 || $rightest)} {
+      set tabs [lreplace $tabs $iw1 $iw1]
+      set i [expr {$rightest||$iw1>$i?$i:$i-1}]
+      if {$rightest && $i<($llen-1) && $i==$iw1} {incr i}
+      set tabs [linsert $tabs $i $tab1]
+      set left yes
+      if {$rightest} {
+        set left no
+        set tleft $i
+      } elseif {$i<$tleft} {
+        set tleft $i
+      }
+      break
+    }
+  }
+  if {$tabssav ne $tabs} {
+    my $BID configure -TABS $tabs
+    my $BID Refill $tleft $left
+  }
+}
+#__________
+
+method OnCtrlButton {} {
+  # Handles a selection of few tabs with Ctrl key + click.
+
+  lassign [my IDs [my ID]] TID BID
+  lassign [my $BID cget -static -FEWSEL] static fewsel
+  if {$static} return
+  if {[set i [lsearch $fewsel $TID]]>-1} {
+    set fewsel [lreplace $fewsel $i $i]
+  } else {
+    lappend fewsel $TID
+  }
+  my $BID configure -FEWSEL $fewsel
+  my Tab_MarkBar $BID
+}
+#__________
+
+method OnPopup {X Y} {
+  # Handles the mouse right-clicking on a tab.
+  #   X - x position of the mouse pointer
+  #   Y - y position of the mouse pointer
+
+  lassign [my IDs [my ID]] TID BID
+  lassign [my $BID cget -wbar -menu -USERMNU -TABS -static -hidearrows -WWID] \
+    wbar popup usermnu tabs static hidearr wwid
+  if {$static && $hidearr && !$usermnu} {
+    lassign $wwid wframe wlarr wrarr
+    if {[catch {pack info $wlarr}] && [catch {pack info $wrarr}]} {
+      return ;# static absolutely
+    }
+  }
+  set textcur [my $TID cget -text]
+  set pop $wbar.popupMenu
+  if {[winfo exist $pop]} {destroy $pop}
+  menu $pop -tearoff 0
+  set ilist [list]
+  foreach p $popup {
+    lassign $p typ label comm menu dsbl
+    if {$menu ne ""} {set popc $pop.$menu} {set popc $pop}
+    foreach opt {label comm menu dsbl} {
+      set $opt [string map [list %b $BID %t $TID %l $textcur] [set $opt]]
+    }
+    if {[info commands [lindex $dsbl 0]] ne ""} {
+      ;# 0/1/2 image label hotkey
+      lassign [{*}$dsbl $BID $TID $label] dsbl comimg comlabel hotk
+    } else {
+      lassign $dsbl dsbl comimg comlabel hotk
+      set dsbl [expr {([string is boolean $dsbl] && $dsbl ne "")?$dsbl:0}]
+    }
+    if {$dsbl eq "2"} continue  ;# 2 - "hide"; 1 - "disable"; 0 - "normal"
+    if {$dsbl} {set dsbl "-state disabled"} {set dsbl ""}
+    if {$comimg ne ""} {set comimg "-image $comimg"}
+    if {$comlabel ne ""} {set label $comlabel}
+    if {$comimg eq ""} {set comimg "-image ::bartabs::ImgNone"}
+    if {$hotk ne ""} {set hotk "-accelerator $hotk"}
+    switch [string index $typ 0] {
+      "s" {$popc add separator}
+      "c" {
+        $popc add command -label $label -command $comm \
+          {*}$dsbl -compound left {*}$comimg {*}$hotk
+      }
+      "m" {
+        if {$menu eq "bartabs_cascade" && !$usermnu && $static} {
+          set popc $pop  ;# no user mnu & static: only list of tabs be shown
+        } else {
+          if {[winfo exist $popc]} {destroy $popc}
+          menu $popc -tearoff 0
+          set popm [string range $popc 0 [string last . $popc]-1]
+          $popm add cascade -label $label -menu $popc \
+            {*}$dsbl -compound left {*}$comimg {*}$hotk
+        }
+        if {[string match "bartabs_cascade*" $menu]} {
+          set popi $popc
+          lappend lpopi $popi
+          set ilist [my $BID PopupFillList $popi $TID $menu]
+        }
+      }
+    }
+  }
+  foreach popi $lpopi {my Bar_PopupTuneList $BID $TID $popi $ilist $pop}
+  lassign [my $TID cget -wb1 -wb2] wb1 wb2
+  bind $pop <Unmap> [list [self] $TID OnLeaveTab $wb1 $wb2]
+  tk_popup $pop $X $Y
+}
+
+# _________________________ Public methods of Tab _______________________ #
+
+method tab_Exists {TID} {
+  # Checks if a tab object exists.
+  #   TID - tab ID
+  # Returns true if the tab exists, otherwise returns false.
+
+  return [expr {[my Tab_BID $TID check] ne ""}]
+}
+#__________
+
+method tab_Show {{anyway no}} {
+  # Shows a tab in a bar and sets it as current.
+  #   anyway - if "yes", refill the bar anyway (for choosing from menu)
+
+  lassign [my IDs [my ID]] TID BID
+  if {$anyway} {my $BID clear}
+  set itab 0
+  foreach tab [my $BID listTab]  {
+    lassign $tab tID text wb wb1 wb2 pf
+    if {$TID==$tID} {
+      set anyway [expr {$pf eq ""}]  ;# check if visible
+      break
+    }
+    incr itab
+  }
+  if {$anyway} {my $BID Refill $itab no yes}
+  my $TID Tab_BeCurrent
+}
+#__________
+
+method tab_Close {{doupdate yes}} {
+  # Closes (deletes) a tab and updates the bar.
+  #   doupdate - if "yes", update the bar and select the new tab
+  # Returns "yes" if the deletion was successful.
+
+  lassign [my Tab_BID [set TID [my ID]]] BID icurr
+  if {![my $TID Tab_Cmd -cdel]} {return no} ;# chosen to not close
+  if {$doupdate} {my $BID clear}
+  lassign [my $BID cget -TABS -tleft -tright -tabcurrent] tabs tleft tright tcurr
+  my Tab_RemoveLinks $BID $TID
+  destroy [my $TID cget -wb]
+  set tabs [lreplace $tabs $icurr $icurr]
+  my $BID configure -TABS $tabs
+  if {$doupdate} {
+    if {$icurr>=$tleft && $icurr<$tright} {
+      my $BID draw
+      my [lindex $tabs $icurr 0] Tab_BeCurrent
+    } else {
+      if {[set TID [lindex $tabs end 0]] ne ""} {
+        my $TID tab_Show 1 ;# last tab deleted: show a new last tab if any
+      }
+    }
+  }
+  return yes
+}
+} ;# --- bartabs::Tab
+
+# ________________________ Private methods of Bar _______________________ #
+
+oo::define ::bartabs::Bar {
+
+method Bar_Data {barOptions} {
   # Puts data of a new bar in btData dictionary.
-  #   barNewInfo - the new bar's data
+  #   barOptions - the new bar's options
   # Returns ID of the new bar.
 
   variable btData
-  variable NewBarID
-  incr NewBarID
+  set BID bar[incr ::bartabs::NewBarID]
   # set defaults:
-  set barinfo [dict create -wbase "" -wproc "" \
+  set barinfo [dict create -wbar ""  -wbase "" -wproc "" \
     -static no -hidearrows no -redraw 1 -scrollsel yes -lablen 0 -tiplen 0 \
     -tleft 0 -tright end -tabcurrent -1 -marktabs [list] -fgmark #800080 \
     -relief groove -fgsel "." -bd 1 -padx 2 -pady 4 -expand 1 \
-    -ELLIPSE "\u2026" -MOVWIN ".bt_move" -ARRLEN 0]
+    -ELLIPSE "\u2026" -MOVWIN ".bt_move" -ARRLEN 0 -USERMNU 0]
   set tabinfo [set imagetabs [set popup [list]]]
-  set usermnu 0
-  Bar_PopupInfo $NewBarID popup
-  foreach {optnam optval} $barNewInfo {
+  my Bar_PopupInfo $BID popup
+  foreach {optnam optval} $barOptions {
     switch -exact -- $optnam {
-      -tab { ;# a tab's info is a text
-        set found no
-        set optval [Tab_Label $optval]
-        # check for duplicates: no duplicate tabs allowed
+      -tab {
+        # no duplicate tabs allowed:
         if {[lsearch -index {1 1} -exact $tabinfo $optval]==-1} {
-          lappend tabinfo [Tab_Data $NewBarID $optval]
+          lappend tabinfo [my Tab_Data $BID $optval]
+          dict set barinfo -TABS $tabinfo
+          dict set barinfo -LLEN [llength $tabinfo]
         }
-        continue ;# tabs added one by one
       }
       -imagetab {  ;# a label and its image
         lappend imagetabs $optval
+        dict set barinfo -IMAGETABS $imagetabs
       }
       -menu {
         lappend popup {*}$optval
-        set usermnu 1
-      }
-      -tleft - -tright { ;# index of left/right tab
-      }
-      -fgmark - -bgmark { ;# foreground/background color of a tab marked
-      }
-      -imagemark { ;# image of a tab marked
-      }
-      -cnew - -cdel - -csel - -cmov {
-        ;# command called at creating/deleting/selecting/moving a tab
-      }
-      -hidearrows { ;# "yes" to hide scrolling arrows; "no" (default) to disable
-      }
-      -font { ;# font of buttons
-      }
-      -scrollsel { ;# if "yes", a current tab position scrolled
-      }
-      -relief {  ;# relief of tabs
-      }
-      -static {  ;# to disable "Close"
-      }
-      -wbar { ;# parent widget of the bar
-      }
-      -wbase { ;# base widget to get the bartabs' width
-      }
-      -wproc { ;# procedure to get the bartabs' width
-      }
-      -lablen { ;# maximum of tab label's length
-      }
-      -tiplen { ;# maximum of tooltips for scrolling arrows
-      }
-      -fgsel - -bgsel { ;# attributes for selection
-      }
-      -bd { ;# tab's border
-      }
-      -padx - -pady { ;# tab's padx, pady
-      }
-      -expand { ;# flag "expand tabs to fill the bar"
-      }
-      -redraw { ;# flag "redraw the bar at window resizing"
-      }
-      -WWID { ;# tab's widgets (inside use)
-      }
-      -DEBUG { ;# for debugging, e.g. to shade options like -menu
+        dict set barinfo -menu $popup
+        dict set barinfo -USERMNU 1
       }
       default {
-        return -code error "bartabs: incorrect option $optnam"
+        dict set barinfo $optnam $optval
       }
     }
-    dict set barinfo $optnam $optval
   }
+  set wbar [dict get $barinfo -wbar]
+  if {$wbar eq ""} {return -code error "bartabs: -wbar option is obligatory"}
   set wbase [dict get $barinfo -wbase]
   set wproc [dict get $barinfo -wproc]
   if {$wbase ne "" && $wproc eq ""} {
     dict set barinfo -wproc "expr {\[winfo width $wbase\]-80}" ;# 80 for ornaments
   }
-  dict set barinfo -menu $popup
-  dict set barinfo -USERMNU $usermnu
-  dict set barinfo -TABS $tabinfo
-  dict set barinfo -LLEN [llength $tabinfo]
-  dict set barinfo -IMAGETABS $imagetabs
-  dict set btData $NewBarID $barinfo
-  return $NewBarID
+  dict set btData $BID $barinfo
+  return $BID
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_InitColors {barID} {
+method Bar_PopupInfo {BID popName} {
+  # Creates a popup menu items in a tab bar.
+  #   BID - bar ID
+  #   popName - variable name for popup's data
+
+  upvar 1 $popName pop
+  set bar "[self] $BID"
+  set dsbl "{$bar CheckDsblPopup}"
+  foreach item [list \
+  "m {List} {} bartabs_cascade" \
+  "m {Move to} {} bartabs_cascade2 $dsbl" \
+  "s {} {} {} $dsbl" \
+  "c {Close} {[self] tab%t tab_Close} {} $dsbl" \
+  "c {Close all} {$bar Tab_CloseFew} {} $dsbl" \
+  "c {Close all at left} {$bar Tab_CloseFew %t 1} {} $dsbl" \
+  "c {Close all at right} {$bar Tab_CloseFew %t} {} $dsbl"] {
+    lappend pop $item
+  }
+}
+#__________
+
+method Bar_PopupTuneList {BID TID popi ilist {pop ""}} {
+  # Tunes "List of tabs" item of popup menu (colors & underlining).
+  #   BID - bar ID
+  #   TID - clicked tab ID
+  #   popi - menu of the tab items
+  #   ilist - list of "s" (separators) and IDs of tabs
+  #   pop - menu to be themed
+
+  if {$pop eq ""} {set pop $popi}
+  catch {::apave::paveObj themePopup $pop}
+  lassign [my $BID cget -tabcurrent -FEWSEL -FGOVER -BGOVER] \
+    tabcurr fewsel fgo bgo
+  for {set i 0} {$i<[llength $ilist]} {incr i} {
+    if {[set tID [lindex $ilist $i]] eq "s"} continue
+    set opts [my Tab_ImageMarkAttrs $BID $tID]
+    if {"-image" ni $opts} {
+      append opts " -image ::bartabs::ImgNone -compound left"
+    }
+    set font [list -font [font configure TkDefaultFont]]
+    if {$tID==$tabcurr || [lsearch $fewsel $tID]>-1} {
+      set font [my Tab_SelAttrs $font "" ""]
+    }
+    append opts " $font"
+    if {$tID==$TID} {append opts " -foreground $fgo -background $bgo"}
+    $popi entryconfigure $i {*}$opts
+  }
+}
+#__________
+
+method InitColors {} {
   # Initializes colors of a bar.
-  #   barID - ID of the tab's bar
 
   set fgmain [ttk::style configure . -foreground] ;# all of these are themed &
   set bgmain [ttk::style configure . -background] ;# must be updated each time
@@ -580,50 +1024,48 @@ proc bts::Bar_InitColors {barID} {
     set fgo $bgmain
     if {$bgo in {black #000000}} {set bgo #444444; set fgo #FFFFFF}
   }
-  bar_Configure $barID -FGMAIN $fgmain -BGMAIN $bgmain -FGOVER $fgo -BGOVER $bgo
+  my [my ID] configure -FGMAIN $fgmain -BGMAIN $bgmain -FGOVER $fgo -BGOVER $bgo
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_Style {barID} {
+method Style {} {
   # Sets styles a bar's widgets.
-  #   barID - ID of the tab's bar
 
-  ttk::style configure ClButton$barID [ttk::style configure TButton]
-  ttk::style configure ClButton$barID -relief flat \
+  set BID [my ID]
+  ttk::style configure ClButton$BID [ttk::style configure TButton]
+  ttk::style configure ClButton$BID -relief flat \
     -padx 0 -bd 0 -highlightthickness 0
-  ttk::style map       ClButton$barID [ttk::style map TButton]
-  ttk::style layout    ClButton$barID [ttk::style layout TButton]
+  ttk::style map       ClButton$BID [ttk::style map TButton]
+  ttk::style layout    ClButton$BID [ttk::style layout TButton]
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_ScrollCurr {barID dir} {
+method ScrollCurr {dir} {
   # Scrolls the current tab to the left/right.
-  #   barID - ID of the bar
   #   dir - -1 if scrolling to the left; 1 if to the right
 
-  lassign [bar_Cget $barID -scrollsel -tabcurrent] sccur tcurr
+  lassign [my [set BID [my ID]] cget -scrollsel -tabcurrent] sccur tcurr
   if {!$sccur || $tcurr eq ""} {return no}
-  set tabs [tab_FlagList $barID]
-  if {[set i [Aux_IndexInList $tcurr $tabs]]==-1} {return no}
+  set tabs [my $BID listFlag]
+  if {[set i [my Aux_IndexInList $tcurr $tabs]]==-1} {return no}
   incr i $dir
   if {[lindex $tabs $i 2] eq "1"} { ;# is the next/previous tab visible?
-    tab_Select [lindex $tabs $i 0]  ;# yes, set it current
+    my [lindex $tabs $i 0] Tab_BeCurrent  ;# yes, set it current
     return yes
   }
   return no
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_ArrowsState {barID tleft tright sright} {
+method ArrowsState {tleft tright sright} {
   # Sets a state of scrolling arrows.
-  #   barID - ID of the bar
   #   tleft - index of left tab
   #   tright - index of right tab
   #   sright - state of a right arrow ("no" for "disabled")
 
-  lassign [bar_Cget $barID -WWID -hidearrows -tiplen] wwid hidearr tiplen
+  lassign [my [set BID [my ID]] cget -WWID -hidearrows -tiplen] wwid hidearr tiplen
   lassign $wwid wframe wlarr wrarr
-  set tabs [tab_List $barID]
+  set tabs [my $BID listTab]
   if {$tleft} {
     if {$hidearr && [catch {pack $wlarr -before $wframe -side left}]} {
       pack $wlarr -side left
@@ -646,7 +1088,7 @@ proc bts::Bar_ArrowsState {barID tleft tright sright} {
         append tip "..."
         break
       }
-      set text [lindex [Tab_TextEllipsed $barID [lindex $tabs $i 1]] 0]
+      set text [lindex [my Tab_TextEllipsed $BID [lindex $tabs $i 1]] 0]
       append tip "$text\n"
     }
   }
@@ -673,77 +1115,24 @@ proc bts::Bar_ArrowsState {barID tleft tright sright} {
         append tip "..."
         break
       }
-      set text [lindex [Tab_TextEllipsed $barID [lindex $tabs $i 1]] 0]
+      set text [lindex [my Tab_TextEllipsed $BID [lindex $tabs $i 1]] 0]
       append tip "$text\n"
     }
   }
   catch {tooltip::tooltip $wrarr [string trim $tip]}
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_CheckDsblPopup {barID tabID mnuit} {
-  # Controls disabling of "Close" menu items.
-  #   barID - ID of the bar
-  #   tabID - ID of the clicked tab
-  #   mnuit - menu label
-  # Returns "yes" for disabled menu item
-
-  lassign [tab_BarID $tabID] barID icur
-  lassign [bar_Cget $barID -static -LLEN] static llen
-  switch -exact -- $mnuit {
-    "Move to" {
-      if {$static} {return 2}
-      lassign [Tab_TextEllipsed $barID [tab_Cget $tabID -text] 16] mnuit
-      return [list [expr {$llen<2||$llen==2&&$icur==1}] {} "Put \"$mnuit\" behind"]
-    }
-    "Close" - "Close all" - "" {
-      if {$static} {return 2}
-    }
-    "Close all at left" {
-      if {$static} {return 2}
-      return [expr {!$icur}]
-    }
-    "Close all at right" {
-      if {$static} {return 2}
-      return [expr {$icur==($llen-1)}]
-    }
-  }
-  return no
-}
-#----------------------------------
-
-proc bts::Bar_PopupInfo {barID popName} {
-  # Creates a popup menu items in a tab bar.
-  #   barID - ID of the bar
-  #   popName - variable name for popup's data
-
-  upvar 1 $popName pop
-  set NS "[namespace current]::"
-  set dsbl "${NS}Bar_CheckDsblPopup"
-  foreach item [list \
-  "m {List} {} bartabs_cascade" \
-  "m {Move to} {} bartabs_cascade2 $dsbl" \
-  "s {} {} {} $dsbl" \
-  "c {Close} {${NS}tab_Close %t} {} $dsbl" \
-  "c {Close all} {${NS}tab_CloseFew $barID} {} $dsbl" \
-  "c {Close all at left} {${NS}tab_CloseFew $barID %t 1} {} $dsbl" \
-  "c {Close all at right} {${NS}tab_CloseFew $barID %t} {} $dsbl"] {
-    lappend pop $item
-  }
-}
-#----------------------------------
-
-proc bts::Bar_PopupFillList {barID popi {tabID -1} {mnu ""}} {
+method PopupFillList {popi {TID -1} {mnu ""}} {
   # Fills "List of tabs" item of popup menu.
-  #   barID - ID of the bar
   #   popi - menu of the tab items
-  #   tabID - ID of the tab clicked
+  #   TID - clicked tab ID
   #   mnu - root menu name
   # Return a list of menu items types (s - separator, ID - tab ID)
 
   set vis [set seps 0] ;# flags for separators before/after visible items
   set res [list]
-  foreach tab [tab_FlagList $barID] {
+  foreach tab [my [set BID [my ID]] listFlag] {
     lassign $tab tID text vsbl
     if {$vsbl && !$seps || !$vsbl && $vis} {
       $popi add separator
@@ -758,10 +1147,10 @@ proc bts::Bar_PopupFillList {barID popi {tabID -1} {mnu ""}} {
       lappend res s
       incr seps
     }
-    if {$tabID == -1 || $mnu eq "bartabs_cascade"} {
-      set comm "bts::tab_Show $tID 1"
+    if {$TID == -1 || $mnu eq "bartabs_cascade"} {
+      set comm "[self] $tID tab_Show 1"
     } else {
-      set comm "bts::Tab_MoveBehind $tabID $tID"
+      set comm "[self] move $TID $tID"
     }
     $popi add command -label $text -command $comm
     lappend res $tID
@@ -772,67 +1161,13 @@ proc bts::Bar_PopupFillList {barID popi {tabID -1} {mnu ""}} {
   }
   return $res
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_PopupTuneList {barID tabID popi ilist {pop ""}} {
-  # Tunes "List of tabs" item of popup menu (colors & underlining).
-  #   barID - ID of the bar
-  #   tabID - ID of the clicked tab
-  #   popi - menu of the tab items
-  #   ilist - list of "s" (separators) and IDs of tabs
-  #   pop - menu to be themed
-
-  if {$pop eq ""} {set pop $popi}
-  catch {::apave::paveObj themePopup $pop}
-  lassign [bar_Cget $barID -tabcurrent -FEWSEL -FGOVER -BGOVER] \
-    tabcurr fewsel fgo bgo
-  for {set i 0} {$i<[llength $ilist]} {incr i} {
-    if {[set tID [lindex $ilist $i]] eq "s"} continue
-    set opts [Tab_ImageMarkAttrs $barID $tID]
-    if {"-image" ni $opts} {
-      append opts " -image bts::ImgNone -compound left"
-    }
-    set font [list -font [font configure TkDefaultFont]]
-    if {$tID==$tabcurr || [lsearch $fewsel $tID]>-1} {
-      set font [Tab_SelAttrs $font "" ""]
-    }
-    append opts " $font"
-    if {$tID==$tabID} {append opts " -foreground $fgo -background $bgo"}
-    $popi entryconfigure $i {*}$opts
-  }
-}
-#----------------------------------
-
-proc bts::Bar_Command {barID tabID opt} {
-  # Executes a command bound to an action on a tab.
-  #   barID - ID of the bar
-  #   tabID - ID of the tab
-  #   opt - command option (-cdel, -cnew, -csel)
-  # The commands can include wildcards: %b for bar ID, %t for tab ID,
-  # %l for tab label. 
-  # Returns "yes", if no command set or the command returned "yes".
-
-  variable btData
-  if {[dict exists $btData $barID $opt]} {
-    set com [dict get $btData $barID $opt]
-    if {$tabID>-1} {
-      set label [tab_Cget $tabID -text]
-    } else {
-      set label ""
-    }
-    set res [{*}[string map [list %b $barID %t $tabID %l $label] $com]]
-    if {$res eq "" || !$res} {return no} ;# chosen "don't"
-  }
-  return yes
-}
-#----------------------------------
-
-proc bts::Bar_Width {barID} {
+method Width {} {
   # Calculates the width of a bar to place tabs.
-  #   barID - ID of the bar
   # Returns the width of bar.
 
-  lassign [bar_Cget $barID \
+  lassign [my [set BID [my ID]] cget \
     -tleft -tright -LLEN -wbase -wbar -ARRLEN -hidearrows -WWID -BWIDTH -wproc] \
     tleft tright llen wbase wb arrlen hidearrows wwid bwidth1 wproc
   set iarr 2
@@ -843,11 +1178,11 @@ proc bts::Bar_Width {barID} {
   set minus2len [expr {-$iarr*$arrlen}]
   set bwidth2 0
   if {$wproc ne ""} {
-    set bwidth2 [{*}[string map [list %b $barID] $wproc]]
+    set bwidth2 [{*}[string map [list %b $BID] $wproc]]
   }
   if {$bwidth2<2 && [set wbase_exist [winfo exists $wbase]]} {
     # 'wbase' is a base widget to get the bartabs' width from
-    set bwidth2 [Aux_WidgetWidth $wbase]
+    set bwidth2 [my Aux_WidgetWidth $wbase]
   }
   incr bwidth2 $minus2len
   set wbase_exist [expr {$bwidth2>1}]
@@ -868,44 +1203,42 @@ proc bts::Bar_Width {barID} {
   }
   return $bwidth
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_FillFromLeft {barID {ileft ""} {tright "end"}} {
+method FillFromLeft {{ileft ""} {tright "end"}} {
   # Fills a bar with tabs from the left to the right (as much tabs as possible).
-  #   barID - ID of the bar
   #   ileft - index of a left tab
   #   tright - index of a right tab
 
-  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen tleft hidearr tabs wframe
+  lassign [my Aux_InitDraw [set BID [my ID]]] bwidth vislen bd arrlen llen tleft hidearr tabs wframe
   if {$ileft ne ""} {set tleft $ileft}
   for {set i $tleft} {$i<$llen} {incr i} {
-    lassign [Tab_DictItem [lindex $tabs $i]] tabID text wb wb1 wb2 pf
-    lassign [Tab_Create $barID $tabID $wframe $text] wb wb1 wb2
-    if {[Aux_CheckTabVisible $wb $wb1 $wb2 $i $tleft tright vislen \
-    $llen $hidearr $arrlen $bd $bwidth tabs $tabID $text]} {
-      Tab_Pack $barID $tabID $wb $wb1 $wb2
+    lassign [my Tab_DictItem [lindex $tabs $i]] TID text wb wb1 wb2 pf
+    lassign [my Tab_Create $BID $TID $wframe $text] wb wb1 wb2
+    if {[my Aux_CheckTabVisible $wb $wb1 $wb2 $i $tleft tright vislen \
+    $llen $hidearr $arrlen $bd $bwidth tabs $TID $text]} {
+      my Tab_Pack $BID $TID $wb $wb1 $wb2
     }
   }
-  Aux_EndDraw $barID $tleft $tright $llen
+  my Aux_EndDraw $BID $tleft $tright $llen
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_FillFromRight {barID tleft tright behind} {
+method FillFromRight {tleft tright behind} {
   # Fills a bar with tabs from the right to the left (as much tabs as possible).
-  #   barID - ID of the bar
   #   tleft - index of a left tab
   #   tright - index of a right tab
   #   behind - flag "go behind the right tab"
 
-  set llen [bar_Cget $barID -LLEN]
+  set llen [my [set BID [my ID]] cget -LLEN]
   if {$tright eq "end" || $tright>=$llen} {set tright [expr {$llen-1}]}
-  bar_Configure $barID -tleft $tright -tright $tright
-  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen tleft hidearr tabs wframe
+  my $BID configure -tleft $tright -tright $tright
+  lassign [my Aux_InitDraw $BID] bwidth vislen bd arrlen llen tleft hidearr tabs wframe
   set totlen 0
   for {set i $tright} {$i>=0} {incr i -1} {
-    lassign [Tab_DictItem [lindex $tabs $i]] tabID text wb wb1 wb2 pf
-    lassign [Tab_Create $barID $tabID $wframe $text] wb wb1 wb2
-    incr vislen [set wlen [tab_Cget $tabID -width]]
+    lassign [my Tab_DictItem [lindex $tabs $i]] TID text wb wb1 wb2 pf
+    lassign [my Tab_Create $BID $TID $wframe $text] wb wb1 wb2
+    incr vislen [set wlen [my $TID cget -width]]
     if {$i<$tright && ($vislen+($tright<($llen-1)||!$hidearr?$arrlen:0))>$bwidth} {
       set pf ""
     } else {
@@ -913,398 +1246,204 @@ proc bts::Bar_FillFromRight {barID tleft tright behind} {
       set pf "p"
       incr totlen $wlen
     }
-    set tabs [lreplace $tabs $i $i [Tab_ItemDict $tabID $text $wb $wb1 $wb2 $pf]]
+    set tabs [lreplace $tabs $i $i [my Tab_ItemDict $TID $text $wb $wb1 $wb2 $pf]]
   }
   set i $tright
   while {$behind && [incr i]<($llen-1) && $totlen<$bwidth} {
     # try to go behind the right tab as far as possible
-    lassign [Tab_DictItem [lindex $tabs $i]] tabID text wb wb1 wb2 pf
-    lassign [Tab_Create $barID $tabID $wframe $text] wb wb1 wb2
-    incr totlen [tab_Cget $tabID -width]
+    lassign [my Tab_DictItem [lindex $tabs $i]] TID text wb wb1 wb2 pf
+    lassign [my Tab_Create $BID $TID $wframe $text] wb wb1 wb2
+    incr totlen [my $TID cget -width]
     if {($totlen+($i<($llen-1)||!$hidearr?$arrlen:0))>$bwidth} {
       set pf ""
     } else {
       set tright $i
       set pf "p"
     }
-    set tabs [lreplace $tabs $i $i [Tab_ItemDict $tabID $text $wb $wb1 $wb2 $pf]]
+    set tabs [lreplace $tabs $i $i [my Tab_ItemDict $TID $text $wb $wb1 $wb2 $pf]]
   }
   for {set i $tleft} {$i<$llen} {incr i} {
-    lassign [Tab_DictItem [lindex $tabs $i]] tabID text wb wb1 wb2 pf
-    if {[Tab_Is $wb] && $pf ne ""} {Tab_Pack $barID $tabID $wb $wb1 $wb2}
+    lassign [my Tab_DictItem [lindex $tabs $i]] TID text wb wb1 wb2 pf
+    if {[my Tab_Is $wb] && $pf ne ""} {my Tab_Pack $BID $TID $wb $wb1 $wb2}
   }
-  Aux_EndDraw $barID $tleft $tright $llen
+  my Aux_EndDraw $BID $tleft $tright $llen
 }
-#----------------------------------
+#__________
 
-proc bts::Bar_Refill {barID itab left {behind false}} {
+method Refill {itab left {behind false}} {
   # Fills a bar with tabs.
-  #   barID - ID of the bar
   #   itab - index of tab
   #   left - if "yes", the bar is filled from the left to the right
   #   behind - flag "go behind the right tab"
 
-  bar_Clear $barID
-  if {$itab eq "end" || $itab==([bar_Cget $barID -LLEN]-1)} {
+  my [set BID [my ID]] clear
+  if {$itab eq "end" || $itab==([my $BID cget -LLEN]-1)} {
     set left 0  ;# checking for the end
   }
   if {$left} {
-    Bar_FillFromLeft $barID $itab
+    my $BID FillFromLeft $itab
   } else {
-    Bar_FillFromRight $barID 0 $itab $behind
+    my $BID FillFromRight 0 $itab $behind
+  }
+}
+#__________
+
+method ScrollLeft {} {
+  # Scrolls the bar tabs to the left.
+
+  if {[my [set BID [my ID]] ScrollCurr -1]} return
+  lassign [my $BID cget -tleft -LLEN -scrollsel] tleft llen sccur
+  if {![string is integer -strict $tleft]} {set tleft 0}
+  if {$tleft && $tleft<$llen} {
+    incr tleft -1
+    set tID [lindex [my $BID listTab] $tleft 0]
+    my $BID configure -tleft $tleft
+    my $BID Refill $tleft yes
+    if {$sccur} {my $tID Tab_BeCurrent}
+  }
+}
+#__________
+
+method ScrollRight {} {
+  # Scrolls the bar tabs to the right.
+
+  if {[my [set BID [my ID]] ScrollCurr 1]} return
+  lassign [my $BID cget -tright -LLEN -scrollsel] tright llen sccur
+  if {![string is integer -strict $tright]} {set tright [expr {$llen-2}]}
+  if {$tright<($llen-1)} {
+    incr tright
+    set tID [lindex [my $BID listTab] $tright 0]
+    my $BID configure -tright $tright
+    my $BID Refill $tright no
+    if {$sccur} {my $tID Tab_BeCurrent}
+  }
+}
+#__________
+
+method CheckDsblPopup {BID TID mnuit} {
+  # Controls disabling of "Close" menu items.
+  #   BID - bar ID
+  #   TID - ID of the clicked tab
+  #   mnuit - menu label
+  # Returns "yes" for disabled menu item
+
+  lassign [my Tab_BID $TID] BID icur
+  lassign [my $BID cget -static -LLEN] static llen
+  switch -exact -- $mnuit {
+    "Move to" {
+      if {$static} {return 2}
+      lassign [my Tab_TextEllipsed $BID [my $TID cget -text] 16] mnuit
+      return [list [expr {$llen<2||$llen==2&&$icur==1}] {} "Put \"$mnuit\" behind"]
+    }
+    "Close" - "Close all" - "" {
+      if {$static} {return 2}
+    }
+    "Close all at left" {
+      if {$static} {return 2}
+      return [expr {!$icur}]
+    }
+    "Close all at right" {
+      if {$static} {return 2}
+      return [expr {$icur==($llen-1)}]
+    }
+  }
+  return no
+}
+#__________
+
+method NeedDraw {} {
+  # Redraws a bar at need.
+
+  set BID [my ID]
+  lassign [my $BID cget -wproc -BWIDTH -ARRLEN] wproc bwo arrlen
+  set bw [{*}[string map [list %b $BID] $wproc]]
+  if {$bwo eq "" || [set need [expr {abs($bwo-$bw)>$arrlen} && $bw>10]]} {
+    my $BID configure -BWIDTH $bw
+  }
+  if {$bwo ne "" && $arrlen ne "" && $need} {
+    after idle [list [self] $BID draw]
   }
 }
 
-# ____________________ Interface procedures for bars ____________________ #
+# _________________________ Public methods of Bar _______________________ #
 
-proc bts::bar_Remove {barID} {
-  # Removes a bar info from btData dictionary and destroys its widgets.
-  #   barID - the bar's ID
+method remove {} {
+  # Removes a bar info from btData dictionary and destroys it.
   # Returns "yes", if the bar was successfully removed.
 
+  set BID [my ID]
   variable btData
-  if {[dict exists $btData $barID]} {
-    set bar [dict get $btData $barID]
-    catch {foreach wb [dict get $bar -WWID] {destroy $wb}}
-    dict unset btData $barID
+  if {[dict exists $btData $BID]} {
+    lassign [my $BID cget -BINDWBASE] wb bnd
+    if {$wb ne ""} {bind $wb <Configure> $bnd}
+    set bar [dict get $btData $BID]
+    foreach wb [dict get $bar -WWID] {catch {destroy $wb}}
+    dict unset btData $BID
     return yes
   }
   return no
 }
-#----------------------------------
+#__________
 
-proc bts::bar_Clear {barID} {
-  # Forgets the currently shown tabs of a bar.
-  #   barID - ID of the bar to be cleared
-
-  foreach tab [tab_List $barID] {
-    lassign $tab tabID text wb wb1 wb2 pf
-    if {[Tab_Is $wb] && $pf ne ""} {
-      pack forget $wb
-      tab_Configure $tabID -pf ""
-    }
-  }
-}
-#----------------------------------
-
-proc bts::bar_Create {barInfo} {
-  # Creates a tab bar.
-  #   barInfo - a list of bar's data
-  # Returns ID of the created bar.
-
-  set w [dict get $barInfo -wbar] ;# parent window (a frame, most likely)
-  set wframe $w.frame ;# frame for tabs
-  set wlarr $w.larr   ;# left scrolling button
-  set wrarr $w.rarr   ;# right scrolling button
-  lappend barInfo -WWID [list $wframe $wlarr $wrarr]
-  set barID [Bar_Data $barInfo]
-  Bar_Style $barID
-  ttk::button $wlarr -style ClButton$barID -image bts::ImgLeftArr \
-    -command [list bts::bar_ScrollLeft $barID] -takefocus 0
-  ttk::button $wrarr -style ClButton$barID -image bts::ImgRightArr \
-    -command [list bts::bar_ScrollRight $barID] -takefocus 0
-  ttk::frame $wframe -relief flat
-  pack $wlarr -side left -padx 0 -pady 0 -anchor e
-  pack $wframe -after $wlarr -side left -padx 0 -pady 0 -fill x -expand 1
-  pack $wrarr -after $wframe -side right -padx 0 -pady 0 -anchor w
-  foreach w {wlarr wrarr} {
-    bind [set $w] <Button-3> "bts::bar_PopupList $barID %X %Y"
-  }
-  lassign [bar_Cget $barID -wbase -wproc -redraw] wbase wproc redraw
-  if {$wbase ne "" && $wproc ne "" && $redraw} {
-    bind $wbase <Configure> [list + bts::bar_NeedRedraw $barID]
-  }
-  after idle [list bar_NeedRedraw $barID ; bts::bar_Draw $barID]
-  return $barID
-}
-#----------------------------------
-
-proc bts::bar_NeedRedraw {barID {doredraw yes}} {
-
-  if {[bar_Exists $barID]} {
-    lassign [bar_Cget $barID -wproc -BWIDTH -ARRLEN] wproc bwo arrlen
-    set bw [{*}[string map [list %b $barID] $wproc]]
-    if {$bwo eq "" || [set needit [expr {abs($bwo-$bw)>$arrlen} && $bw>10]]} {
-      bar_Configure $barID -BWIDTH $bw
-    }
-    if {$bwo ne "" && $arrlen ne "" && $needit} {
-      after idle [list bts::bar_Draw $barID]
-    }
-  }
-}
-#----------------------------------
-
-proc bts::bar_PopupList {barID X Y} {
+method popList {X Y} {
   # Shows a stand-alone popup menu of tabs.
-  #   barID - ID of the bar
   #   X - x coordinate of mouse pointer
   #   Y - y coordinate of mouse pointer
 
-  set wbar [bar_Cget $barID -wbar]
+  set BID [my ID]
+  set wbar [my $BID cget -wbar]
   set popi $wbar.popupList
   catch {destroy $popi}
   menu $popi -tearoff 0
-  if {[set plist [Bar_PopupFillList $barID $popi]] eq "s"} {
+  if {[set plist [my $BID PopupFillList $popi]] eq "s"} {
     destroy $popi
   } else {
-    Bar_PopupTuneList $barID -1 $popi $plist
+    my Bar_PopupTuneList $BID -1 $popi $plist
     tk_popup $popi $X $Y
   }
 }
-#----------------------------------
+#__________
 
-proc bts::bar_ScrollLeft {barID} {
-  # Scrolls the bar tabs to the left.
-  #   barID - ID of the bar
-
-  if {[Bar_ScrollCurr $barID -1]} return
-  lassign [bar_Cget $barID -tleft -LLEN -scrollsel] tleft llen sccur
-  if {![string is integer -strict $tleft]} {set tleft 0}
-  if {$tleft && $tleft<$llen} {
-    incr tleft -1
-    set tID [lindex [tab_List $barID] $tleft 0]
-    bar_Configure $barID -tleft $tleft
-    Bar_Refill $barID $tleft yes
-    if {$sccur} {tab_Select $tID}
-  }
-}
-#----------------------------------
-
-proc bts::bar_ScrollRight {barID} {
-  # Scrolls the bar tabs to the right.
-  #   barID - ID of the bar
-
-  if {[Bar_ScrollCurr $barID 1]} return
-  lassign [bar_Cget $barID -tright -LLEN -scrollsel] tright llen sccur
-  if {![string is integer -strict $tright]} {set tright [expr {$llen-2}]}
-  if {$tright<($llen-1)} {
-    incr tright
-    set tID [lindex [tab_List $barID] $tright 0]
-    bar_Configure $barID -tright $tright
-    Bar_Refill $barID $tright no
-    if {$sccur} {tab_Select $tID}
-  }
-}
-#----------------------------------
-
-proc bts::bar_Draw {barID {doupdate yes}} {
+method draw {{doupdate yes}} {
   # Draws the bar tabs. Used at changing their contents.
-  #   barID - ID of the bar
   #   doupdate - if "yes", performs 'update' before redrawing
 
   if {$doupdate} update
-  lassign [Aux_InitDraw $barID] bwidth vislen bd arrlen llen tleft hidearr tabs wframe
+  set BID [my ID]
+  lassign [my Aux_InitDraw $BID] bwidth vislen bd arrlen llen tleft hidearr tabs wframe
   set tright [expr {$llen-1}]
   for {set i $tleft} {$i<$llen} {incr i} {
-    lassign [Tab_DictItem [lindex $tabs $i]] tabID text wb wb1 wb2 pf
-    lassign [Tab_Create $barID $tabID $wframe $text] wb wb1 wb2
-    if {[Aux_CheckTabVisible $wb $wb1 $wb2 $i $tleft tright vislen $llen $hidearr $arrlen $bd $bwidth tabs $tabID $text]} {
-      Tab_Pack $barID $tabID $wb $wb1 $wb2
+    lassign [my Tab_DictItem [lindex $tabs $i]] TID text wb wb1 wb2 pf
+    lassign [my Tab_Create $BID $TID $wframe $text] wb wb1 wb2
+    if {[my Aux_CheckTabVisible $wb $wb1 $wb2 $i $tleft tright vislen $llen $hidearr $arrlen $bd $bwidth tabs $TID $text]} {
+      my Tab_Pack $BID $TID $wb $wb1 $wb2
     }
   }
-  Aux_EndDraw $barID $tleft $tright $llen
-  Tab_MarkBar $barID
+  my Aux_EndDraw $BID $tleft $tright $llen
+  my Tab_MarkBar $BID
 }
-#----------------------------------
+#__________
 
-proc bts::bar_DrawAll {} {
-  # Redraws all tab bars.
+method clear {} {
+  # Forgets the currently shown tabs of a bar.
 
-  variable btData
-  dict for {barID barInfo} $btData {bar_Draw $barID no}
-}
-#----------------------------------
-
-proc bts::bar_UpdateAll {} {
-  # Updates all tab bars.
-
-  variable btData
-  dict for {barID barInfo} $btData {Bar_Refill $barID 0 yes}
-}
-#----------------------------------
-
-proc bts::bar_Update {barID {tabID -1}} {
-  # Clears and redraws a bar.
-  #   barID - ID of the bar to be cleared
-  #   tabID - ID of tab to be current (barID may be anything at that)
-
-  if {$tabID > -1} {set barID [lindex [tab_BarID $tabID] 0]}
-  bar_Clear $barID
-  if {$tabID == -1} {
-    bar_Draw $barID
-  } else {
-    tab_Show $tabID
-  }
-  update
-}
-#----------------------------------
-
-proc bts::bar_Exists {barID args} {
-  # Checks if a bar exists.
-  #   barID - ID of the bar
-  # Returns 1 if the bar exists, otherwise returns 0.
-
-  return [expr {[bar_Cget $barID -MOVWIN] ne ""}]
-}
-#----------------------------------
-
-proc bts::bar_Cget {barID args} {
-  # Gets values of options of a tab.
-  #   barID - ID of the bar
-  #   args - a list of options, e.g. {-TABS -width}
-  # Return a list of option values or an option value if args is one option.
-
-  variable btData
-  set res [list]
-  foreach opt $args {
-    if {$opt eq "-width"} {
-      lassign [dict get [dict get $btData $barID] -wbar] wbar
-      lappend res [Aux_WidgetWidth $wbar]
-    } elseif {[dict exists $btData $barID $opt]} {
-      lappend res [dict get $btData $barID $opt]
-    } else {
-      lappend res ""
+  foreach tab [my [my ID] listTab] {
+    lassign $tab TID text wb wb1 wb2 pf
+    if {[my Tab_Is $wb] && $pf ne ""} {
+      pack forget $wb
+      my $TID configure -pf ""
     }
   }
-  if {[llength $args]==1} {return [lindex $res 0]}
-  return $res
 }
-#----------------------------------
+#__________
 
-proc bts::bar_Configure {barID args} {
-  # Sets values of options of a bar.
-  #   barID - ID of the bar
-  #   args - a list of pairs "option value", e.g. {{-tleft 1} {-scrollsel 1}}
-  # To make the changes be active, bar_Update is called.
-
-  variable btData
-  foreach {opt val} $args {
-    dict set btData $barID $opt $val
-    if {$opt eq "-TABS"} {dict set btData $barID -LLEN [llength $val]}
-  }
-  if {[dict exists $args -static]} {Bar_Style $barID}
-}
-#----------------------------------
-
-proc bts::bar_Store {barID} {
-  # Stores a bar's data.
-  #   barID - ID of the bar
-  # Returns the bar's data, i.e. the bar's dictionary.
-
-  variable btData
-  variable NewBarID
-  variable NewTabID
-  variable NewTabNo
-  bar_Configure $barID -NewBarID $NewBarID -NewTabID $NewTabID -NewTabNo $NewTabNo
-  return [dict get $btData $barID]
-}
-#----------------------------------
-
-proc bts::bar_Restore {barID data} {
-  # Restores a bar's data, i.e. sets the bar's dictionary.
-  #   barID - ID of the bar
-  #   data - data of the bar (stored by bts::bar_Store)
-
-  variable btData
-  variable NewBarID
-  variable NewTabID
-  variable NewTabNo
-  dict set btData $barID $data
-  lassign [bar_Cget $barID -NewBarID -NewTabID -NewTabNo] NewBarID NewTabID NewTabNo
-}
-
-# ____________________ Interface procedures for tabs ____________________ #
-
-proc bts::tab_BarID {tabID {act ""}} {
-  # Gets barID from tabID.
-  #   tabID - ID of a tab
-  #   act - if "check", only checks the existance of tabID
-  # If 'act' is "check" and a bar not found, -1 is returned, otherwise bar ID.
-  # Returns a list containing 1) bar's ID (or -1 if no bar found) 2) index of
-  # the tab in tabs' list 3) the found tab data.
-
-  variable btData
-  set barID -1
-  dict for {bID bInfo} $btData {
-    set tabs [bar_Cget $bID -TABS]
-    if {[set i [Aux_IndexInList $tabID $tabs]] > -1} {
-      set barID $bID
-      break
-    }
-  }
-  if {$act eq "check"} {return $barID}
-  if {$barID < 0} {
-    return -code error "bartabs: tab ID $tabID not found in the bars"
-  }
-  return [list $barID $i [lindex $tabs $i]]
-}
-#----------------------------------
-
-proc bts::tab_Exists {tabID} {
-  # Checks if a tab exists.
-  #   tabID - ID of a tab
-  # Returns true if the tab exists, otherwise returns false.
-
-  return [expr {[tab_BarID $tabID check] > 0}]
-}
-#----------------------------------
-
-proc bts::tab_Select {tabID} {
-  # Selects a tab, i.e. makes the tab to be current.
-  #   tabID - ID of the tab
-
-  if {$tabID in {"" "-1"}} return
-  set barID [tab_Cget $tabID -barID]
-  Bar_Command $barID $tabID -csel
-  Tab_MarkBar $barID $tabID
-  if {[set wb2 [tab_Cget $tabID -wb2]] ne "" && \
-  ![string match "bts::*" [$wb2 cget -image]] &&
-  $tabID ni [tab_MarkList $barID]} {
-    $wb2 configure -image bts::ImgNone
-  }
-}
-#----------------------------------
-
-proc bts::tab_Mark {args} {
-  # Marks tab(s) in a bar.
-  #   args - list of ID of tabs to be marked
-
-  foreach tabID $args {
-    if {$tabID ne ""} {
-      set barID [lindex [tab_BarID $tabID] 0]
-      set marktabs [bar_Cget $barID -marktabs]
-      if {[lsearch $marktabs $tabID]<0} {
-        lappend marktabs $tabID
-        bar_Configure $barID -marktabs $marktabs
-      }
-    }
-  }
-  Tab_MarkBars
-}
-#----------------------------------
-
-proc bts::tab_Unmark {args} {
-  # Unmarks tab(s) in a bar.
-  #   args - list of ID of tabs to be unmarked
-
-  foreach tabID $args {
-    set barID [lindex [tab_BarID $tabID] 0]
-    set marktabs [bar_Cget $barID -marktabs]
-    if {[set i [lsearch $marktabs $tabID]]>=0} {
-      bar_Configure $barID -marktabs [lreplace $marktabs $i $i]
-    }
-  }
-  Tab_MarkBars
-}
-#----------------------------------
-
-proc bts::tab_Unselect {barID args} {
+method unselect {args} {
   # Removes few or all of multi-selections and redraws a bar.
-  #   barID - ID of the bar
-  #   args - list of tabID to unselect or {} if to unselect all
+  #   args - list of TID to unselect or {} if to unselect all
 
+  set BID [my ID]
   if {[llength $args]} {
-    set fewsel [bar_Cget $barID -FEWSEL]
+    set fewsel [my $BID cget -FEWSEL]
     foreach tID $args {
       if {[set i [lsearch $fewsel $tID]]>-1} {
         set fewsel [lreplace $fewsel $i $i]
@@ -1313,478 +1452,152 @@ proc bts::tab_Unselect {barID args} {
   } else {
     set fewsel {}
   }
-  bar_Configure $barID -FEWSEL $fewsel
-  bar_Draw $barID
+  my $BID configure -FEWSEL $fewsel
+  my $BID draw
 }
-#----------------------------------
+#__________
 
-proc bts::tab_Show {tabID {anyway no}} {
-  # Shows a tab in a bar and sets it as current.
-  #   tabID - ID of the tab
-  #   anyway - if "yes", refill the bar anyway (for choosing from menu)
+method listMark {} {
+  # Gets a list of marked tabs.
+  # Returns a list of marked tab IDs.
 
-  set barID [lindex [tab_BarID $tabID] 0]
-  if {$anyway} {bar_Clear $barID}
-  set itab 0
-  foreach tab [tab_List $barID]  {
-    lassign $tab tID text wb wb1 wb2 pf
-    if {$tabID==$tID} {
-      set anyway [expr {$pf eq ""}]  ;# check if visible
-      break
-    }
-    incr itab
+  set res [list]
+  foreach tab [my [my ID] listFlag] {
+    lassign $tab tID text vis mark
+    if {$mark} {lappend res $tID}
   }
-  if {$anyway} {Bar_Refill $barID $itab no yes}
-  tab_Select $tabID
+  return $res
 }
-#----------------------------------
+#__________
 
-proc bts::tab_IDbyName {barID text} {
-  # Searches for a tab ID by its text.
-  #   barID - ID of the tab's bar
-  #   text - a text of tab
-  # Returns the tab's ID (if found) or -1 (if not).
+method listSel {} {
+  # Gets a list of selected tabs (with Ctrl+Button) and current tab ID.
+  # Returns a list of selected tab IDs and current tab ID.
 
-  set ellipse [bar_Cget $barID -ELLIPSE]
-  if {[string first $ellipse $text]} {
-    set pattern [string map [list $ellipse "*"] $text]
-  } else {
-    set pattern ""
-  }
-  foreach tab [tab_List $barID] {
-    lassign $tab tID ttxt
-    if {$text eq $ttxt} {return $tID}
-    if {$pattern ne "" && [string match $pattern $ttxt]} {return $tID}
-  }
-  return -1
+  lassign [my [my ID] cget -FEWSEL -tabcurrent] fewsel tcurr
+  return [list $fewsel $tcurr]
 }
-#----------------------------------
+#__________
 
-proc bts::tab_Close {tabID {doupdate yes}} {
-  # Closes (deletes) a tab and updates the bar.
-  #   tabID - ID of the tab (if >-1, this is used to get the tab label)
-  #   doupdate - if "yes", update the bar and select the new tab
-  # Returns "yes" if the deletion was successful.
+method listTab {} {
+  # Gets a list of bar tabs.
+  # Returns a list "TID, text, wb, wb1, wb2, pf".
 
-  lassign [tab_BarID $tabID] barID icurr
-  if {![Bar_Command $barID $tabID -cdel]} {return no} ;# chosen to not close
-  if {$doupdate} {bar_Clear $barID}
-  lassign [bar_Cget $barID -TABS -tleft -tright -tabcurrent] tabs tleft tright tcurr
-  Tab_RemoveLinks $barID $tabID
-  destroy [tab_Cget $tabID -wb]
-  set tabs [lreplace $tabs $icurr $icurr]
-  bar_Configure $barID -TABS $tabs
-  if {$doupdate} {
-    if {$icurr>=$tleft && $icurr<$tright} {
-      bar_Draw $barID
-      tab_Select [lindex $tabs $icurr 0]
-    } else {
-      if {[set tabID [lindex $tabs end 0]] ne ""} {
-        tab_Show $tabID 1 ;# last tab deleted: show a new last tab if any
-      }
-    }
-  }
-  return yes
+  set res [list]
+  foreach tab [my [my ID] cget -TABS] {lappend res [my Tab_DictItem $tab]}
+  return $res
 }
-#----------------------------------
 
-proc bts::tab_CloseFew {barID {tabID -1} {left no}} {
-  # Closes few tabs.
-  #   tabID - ID of the current tab or -1 if to close all
-  #   left - "yes" if to close all at left of tabID, "no" if at right
+#__________
 
-  if {$tabID!=-1} {lassign [tab_BarID $tabID] barID icur}
-  set tabs [tab_List $barID]
-  for {set i [llength $tabs]} {$i} {} {
-    incr i -1
-    set tID [lindex $tabs $i 0]
-    if {$tabID==-1 || ($left && $i<$icur) || (!$left && $i>$icur)} {
-      tab_Close $tID no
-    }
+method listFlag {} {
+  # Gets a list of bar's tabs with flags "visible", "marked", "selected".
+  # Returns a list of items "tab ID, tab text, visible, marked, selected".
+
+  set BID [my ID]
+  lassign [my $BID cget -marktabs -FEWSEL -tabcurrent] marktabs fewsel tcurr
+  set res [list]
+  foreach tab [my $BID listTab] {
+    lassign $tab TID text wb wb1 wb2 pf
+    set visible [expr {[my Tab_Is $wb] && $pf ne ""}]
+    set marked [expr {[lsearch $marktabs $TID]>=0}]
+    set selected [expr {$TID == $tcurr || [lsearch $fewsel $TID]>-1}]
+    lappend res [list $TID $text $visible $marked]
   }
-  bar_Clear $barID
-  if {$tabID==-1} {
-    Bar_Refill $barID 0 yes
-  } else {
-    lassign [tab_BarID $tabID] barID icur
-    Bar_Refill $barID $icur $left
-  }
+  return $res
 }
-#----------------------------------
+#__________
 
-proc bts::tab_Insert {barID txt {pos "end"} {img ""}} {
+method insertTab {txt {pos "end"} {img ""}} {
   # Inserts a tab into a bar.
-  #   barID - ID of the bar
   #   txt - text of the tab
   #   pos - position of the tab in the tabs' list (e.g. 0, end)
   #   img - image of the tab
   # Returns ID of the created tab or 0.
 
-  if {![Bar_Command $barID -1 -cnew]} {return 0} ;# chosen to not insert
-  set tabs [bar_Cget $barID -TABS]
-  set tab [Tab_Data $barID [Tab_Label $txt]]
+  set tabs [my [set BID [my ID]] cget -TABS]
+  set tab [my Tab_Data $BID $txt]
   if {$tab eq ""} {return -1}
   if {$pos eq "end"} {
     lappend tabs $tab
   } else {
     set tabs [linsert $tabs $pos $tab]
   }
-  Tab_RemoveLinks $barID -1 $txt
+  my Tab_RemoveLinks $BID -1 $txt
   if {$img ne ""} {
-    set imagetabs [bar_Cget $barID -IMAGETABS]
+    set imagetabs [my $BID cget -IMAGETABS]
     lappend imagetabs [list $txt $img]
-    bar_Configure $barID -IMAGETABS $imagetabs
+    my $BID configure -IMAGETABS $imagetabs
   }
-  bar_Configure $barID -TABS $tabs
-  Bar_Refill $barID $pos [expr {$pos ne "end"}]
+  my $BID configure -TABS $tabs
+  my $BID Refill $pos [expr {$pos ne "end"}]
   return [lindex $tab 0]
 }
-#----------------------------------
+#__________
 
-proc bts::tab_MarkList {barID} {
-  # Gets a list of marked tabs.
-  #   barID - ID of the bar
-  # Returns a list of marked tab IDs.
+method getTabID {txt} {
+  # Gets a tab ID by its text.
+  #   txt - a text of tab
+  # Returns the tab's ID (if found) or -1 (if not).
 
-  set res [list]
-  foreach tab [tab_FlagList $barID] {
-    lassign $tab tID text vis mark
-    if {$mark} {lappend res $tID}
+  set BID [my ID]
+  if {[catch {set ellipse [my $BID cget -ELLIPSE]}]} {return ""}
+  if {[string first $ellipse $txt]} {
+    set pattern [string map [list $ellipse "*"] $txt]
+  } else {
+    set pattern ""
   }
-  return $res
-}
-#----------------------------------
-
-proc bts::tab_SelList {barID} {
-  # Gets a list of selected tabs (with Ctrl+Button) and current tab ID.
-  #   barID - ID of the bar
-  # Returns a list of selected tab IDs and current tab ID.
-
-  lassign [bar_Cget $barID -FEWSEL -tabcurrent] fewsel tcurr
-  return [list $fewsel $tcurr]
-}
-#----------------------------------
-
-proc bts::tab_List {barID} {
-  # Gets a list of bar tabs.
-  #   barID - ID of the bar
-  # Returns a list "tabID, text, wb, wb1, wb2, pf".
-
-  set res [list]
-  foreach tab [bar_Cget $barID -TABS] {lappend res [Tab_DictItem $tab]}
-  return $res
-}
-
-#----------------------------------
-
-proc bts::tab_FlagList {barID} {
-  # Gets a list of bar's tabs with flags "visible", "marked", "selected".
-  #   barID - ID of the bar
-  # Returns a list of items "tab ID, tab text, visible, marked, selected".
-
-  lassign [bar_Cget $barID -marktabs -FEWSEL -tabcurrent] marktabs fewsel tcurr
-  set res [list]
-  foreach tab [tab_List $barID] {
-    lassign $tab tabID text wb wb1 wb2 pf
-    set visible [expr {[Tab_Is $wb] && $pf ne ""}]
-    set marked [expr {[lsearch $marktabs $tabID]>=0}]
-    set selected [expr {$tabID == $tcurr || [lsearch $fewsel $tabID]>-1}]
-    lappend res [list $tabID $text $visible $marked]
+  foreach tab [my $BID listTab] {
+    lassign $tab tID ttxt
+    if {$txt eq $ttxt} {return $tID}
+    if {$pattern ne "" && [string match $pattern $ttxt]} {return $tID}
   }
-  return $res
+  return ""
 }
-#----------------------------------
+#__________
 
-proc bts::tab_Cget {tabID args} {
-  # Gets options of the tab.
-  #   tabID - ID of the tab
-  #   args - list of option names (-text, -wb, -wb1, -wb2)
-  # Returns a list of option values or an option value if args is one option.
+method cget {args} {
+  # Gets values of options. Applied for bars & tabs.
+  #   args - a list of options, e.g. {-tabcurrent -width -MyOpt}
+  # Return a list of option values or an option value if args is one option.
 
+  set BID [my ID]
   variable btData
-  lassign [tab_BarID $tabID] barID i tab
-  lassign $tab tID tdata
-  set llen [dict get $btData $barID -LLEN]
   set res [list]
   foreach opt $args {
-    switch -- $opt {
-      -barID {lappend res $barID}
-      -text - -wb - -wb1 - -wb2 - -pf {
-        if {[catch {lappend res [dict get $tdata $opt]}]} {
-          lappend res ""
-        }
-      }
-      -llen {lappend res $llen}
-      -index {if {$i<($llen-1)} {lappend res $i} {lappend res end}}
-      -width {  ;# width of tab widget
-        lassign [Tab_DictItem $tab] tID text wb wb1 wb2
-        if {![Tab_Is $wb]} {
-          lappend res 0
-        } else {
-          set b1 [ttk::style configure TLabel -borderwidth]
-          if {$b1 eq ""} {set b1 0}
-          lassign [bar_Cget $barID -bd -expand -static] bd expand static
-          set bd [expr {$bd?2*$b1:0}]
-          set b2 [expr {[Aux_WidgetWidth $wb2]-3}]
-          set expand [expr {$expand||![Tab_Iconic $barID]?2:0}]
-          lappend res [expr {[Aux_WidgetWidth $wb1]+$b2+$bd+$expand}]
-        }
-      }
-      default {  ;# user's options
-        if {[catch {lappend res [dict get $tdata $opt]}]} {lappend res ""}
-      }
+    if {$opt eq "-listlen"} {
+      lappend res [dict get $btData $BID -LLEN]
+    } elseif {$opt eq "-width"} {
+      lassign [dict get [dict get $btData $BID] -wbar] wbar
+      lappend res [my Aux_WidgetWidth $wbar]
+    } elseif {[dict exists $btData $BID $opt]} {
+      lappend res [dict get $btData $BID $opt]
+    } else {
+      lappend res ""
     }
   }
   if {[llength $args]==1} {return [lindex $res 0]}
   return $res
 }
-#----------------------------------
+#__________
 
-proc bts::tab_Configure {tabID args} {
-  # Sets values of options of a tab.
-  #   tabID - ID of the tab
-  #   args - a list of pairs "option value", e.g. {-text "New name"}
-  # To make the changes be active, bar_Draw or tab_Show is called.
+method configure {args} {
+  # Sets values of options. Applied for bars & tabs.
+  #   args - a list of pairs "option value", e.g. {{-tleft 1} {-scrollsel 1}}
+  # To make the changes be active, updateAll is called.
 
-  lassign [tab_BarID $tabID] barID i tab
-  lassign $tab tID data
-  foreach {opt val} $args {dict set data $opt $val}
-  set tab [list $tabID $data]
-  bar_Configure $barID -TABS [lreplace [bar_Cget $barID -TABS] $i $i $tab]
+  set BID [my ID]
+  variable btData
+  foreach {opt val} $args {
+    dict set btData $BID $opt $val
+    if {$opt eq "-TABS"} {dict set btData $BID -LLEN [llength $val]}
+  }
+  if {[dict exists $args -static]} {my $BID Style}
 }
 
-# ____________________________ Event handlers ___________________________ #
+# _______________________ Auxiliary methods of Bar ______________________ #
 
-proc bts::onEnterTab {barID wb1 wb2 fgo bgo} {
-  # Handles the mouse pointer entering a tab.
-  #   barID - ID of the bar
-  #   wb1 - tab's label
-  #   wb2 - tab's button
-  #   fgo - foreground of "mouse over the tab"
-  #   bgo - background of "mouse over the tab"
-
-  $wb1 configure -foreground $fgo -background $bgo
-  if {[Tab_Iconic $barID]} {$wb2 configure -image bts::ImgClose}
-}
-#----------------------------------
-
-proc bts::onLeaveTab {barID tabID wb1 wb2} {
-  # Handles the mouse pointer leaving a tab.
-  #   barID - ID of the bar
-  #   tabID ID of the tab
-  #   wb1 - tab's label
-  #   wb2 - tab's button
-
-  if {![winfo exists $wb1] || ![tab_Exists $tabID]} return
-  lassign [bar_Cget $barID -FGMAIN -BGMAIN] fgm bgm
-  $wb1 configure -foreground $fgm -background $bgm
-  Tab_MarkBars $barID
-  if {"-image" ni [set attrs [Tab_ImageMarkAttrs $barID $tabID 0 $wb2]] && \
-  [Tab_Iconic $barID]} {
-    $wb2 configure -image bts::ImgNone
-  }
-}
-#----------------------------------
-
-proc bts::onButtonPress {barID wb1 x} {
-  # Handles the mouse clicking a tab.
-  #   barID - ID of the bar
-  #   wb1 - tab's label
-  #   x - x position of the mouse pointer
-
-  bar_Configure $barID -MOVX $x
-  set tabID [tab_IDbyName $barID [$wb1 cget -text]]
-  tab_Select $tabID
-}
-#----------------------------------
-
-proc bts::onButtonMotion {barID wb1 x y} {
-  # Handles the mouse moving over a tab.
-  #   barID - ID of the bar
-  #   wb1 - tab's label
-  #   x - x position of the mouse pointer
-  #   y - y position of the mouse pointer
-
-  lassign [bar_Cget $barID \
-    -static -FGMAIN -FGOVER -BGOVER -MOVWIN -MOVX -MOVX0 -MOVY0] \
-    static fgm fgo bgo movWin movX movx movY0
-  if {$movX eq "" || $static} return
-  # dragging the tab
-  if {![winfo exists $movWin]} {
-    # make the tab's replica to be dragged
-    toplevel $movWin
-    if {[tk windowingsystem] eq "aqua"} {
-      ::tk::unsupported::MacWindowStyle style $movWin help none
-    } else {
-      wm overrideredirect $movWin 1
-    }
-    bind $movWin <Leave> "destroy $movWin"
-    set movx [set movx1 $x]
-    set movX [expr {[winfo pointerx .]-$x}]
-    set movY0 [expr {[winfo pointery .]-$y}]
-    label $movWin.label -text [$wb1 cget -text] \
-      -foreground $fgo -background $bgo  {*}[Tab_Font $barID]
-    pack $movWin.label -ipadx 1
-    $wb1 configure -foreground $fgm
-    bar_Configure $barID -wb1 $wb1 -MOVX1 $movx1 -MOVY0 $movY0
-  }
-  wm geometry $movWin +$movX+$movY0
-  bar_Configure $barID -MOVX [expr {$movX+$x-$movx}] -MOVX0 $x
-}
-#----------------------------------
-
-proc bts::onButtonRelease {barID wb1o x} {
-  # Handles the mouse releasing a tab.
-  #   barID - ID of the bar
-  #   wb1o - original tab's label
-  #   x - x position of the mouse pointer
-
-  lassign [bar_Cget $barID \
-    -MOVWIN -MOVX -MOVX1 -MOVY0 -FGMAIN -wb1 -tleft -tright -wbar -static] \
-    movWin movX movx1 movY0 fgm wb1 tleft tright wbar static
-  bar_Configure $barID -MOVX "" -wb1 ""
-  if {[winfo exists $movWin]} {destroy $movWin}
-  if {$movX eq "" || $wb1o ne $wb1 || $static} return
-  # dropping the tab - find a tab being dropped at
-  $wb1 configure -foreground $fgm
-  lassign [Aux_InitDraw $barID no] bwidth vislen bd arrlen llen
-  set vislen1 $vislen
-  set vlist [list]
-  set i 0
-  set iw1 -1
-  set tabssav [set tabs [bar_Cget $barID -TABS]]
-  foreach tab $tabs {
-    lassign [Tab_DictItem $tab] tID text _wb _wb1 _wb2 _pf
-    if {$_pf ne ""} {
-      if {$_wb1 eq $wb1} {
-        set vislen0 $vislen
-        set tab1 $tab
-        set iw1 $i
-        set tabID $tID
-      }
-      set wl [expr {[winfo reqwidth $_wb1]+[winfo reqwidth $_wb2]}]
-      lappend vlist [list $i $vislen $wl]
-      incr vislen $wl
-    }
-    incr i
-  }
-  if {$iw1==-1} return  ;# for sure
-  if {![Bar_Command $barID $tabID -cmov]} return ;# chosen to not move
-  set vislen2 [expr {$vislen0+$x-$movx1}]
-  foreach vl $vlist {
-    lassign $vl i vislen wl
-    set rightest [expr {$i==$tright && $vislen2>(10+$vislen)}]
-    if {$iw1==($i+1) && $x<0} {incr vislen2 $wl}
-    if {($vislen>$vislen2 || $rightest)} {
-      set tabs [lreplace $tabs $iw1 $iw1]
-      set i [expr {$rightest||$iw1>$i?$i:$i-1}]
-      if {$rightest && $i<($llen-1) && $i==$iw1} {incr i}
-      set tabs [linsert $tabs $i $tab1]
-      set left yes
-      if {$rightest} {
-        set left no
-        set tleft $i
-      } elseif {$i<$tleft} {
-        set tleft $i
-      }
-      break
-    }
-  }
-  if {$tabssav ne $tabs} {
-    bar_Configure $barID -TABS $tabs
-    Bar_Refill $barID $tleft $left
-  }
-}
-#----------------------------------
-
-proc bts::onCtrlButton {barID tabID} {
-  # Handles a selection of few tabs with Ctrl key + click.
-  #   barID - ID of the bar
-  #   tabID - ID of the current tab
-
-  lassign [bar_Cget $barID -static -FEWSEL] static fewsel
-  if {$static} return
-  if {[set i [lsearch $fewsel $tabID]]>-1} {
-    set fewsel [lreplace $fewsel $i $i]
-  } else {
-    lappend fewsel $tabID
-  }
-  bar_Configure $barID -FEWSEL $fewsel
-  Tab_MarkBar $barID
-}
-#----------------------------------
-
-proc bts::onPopup {barID tabID X Y} {
-  # Handles the mouse right-clicking on a tab.
-  #   barID - ID of the bar
-  #   tabID - ID of the tab
-  #   X - x position of the mouse pointer
-  #   Y - y position of the mouse pointer
-
-  lassign [bar_Cget $barID -wbar -menu -USERMNU -TABS -static -hidearrows -WWID] \
-    wbar popup usermnu tabs static hidearr wwid
-  if {$static && $hidearr && !$usermnu} {
-    lassign $wwid wframe wlarr wrarr
-    if {[catch {pack info $wlarr}] && [catch {pack info $wrarr}]} {
-      return ;# static absolutely
-    }
-  }
-  set textcur [tab_Cget $tabID -text]
-  set pop $wbar.popupMenu
-  if {[winfo exist $pop]} {destroy $pop}
-  menu $pop -tearoff 0
-  set ilist [list]
-  foreach p $popup {
-    lassign $p typ label comm menu dsbl
-    if {$menu ne ""} {set popc $pop.$menu} {set popc $pop}
-    foreach opt {label comm menu dsbl} {
-      set $opt [string map [list %b $barID %t $tabID %l $textcur] [set $opt]]
-    }
-    if {[info commands $dsbl] ne ""} {
-      ;# 0/1/2 image label hotkey
-      lassign [$dsbl $barID $tabID $label] dsbl comimg comlabel hotk
-    } else {
-      lassign $dsbl dsbl comimg comlabel hotk
-      set dsbl [expr {([string is boolean $dsbl] && $dsbl ne "")?$dsbl:0}]
-    }
-    if {$dsbl eq "2"} continue  ;# 2 - "hide"; 1 - "disable"; 0 - "normal"
-    if {$dsbl} {set dsbl "-state disabled"} {set dsbl ""}
-    if {$comimg ne ""} {set comimg "-image $comimg"}
-    if {$comlabel ne ""} {set label $comlabel}
-    if {$comimg eq ""} {set comimg "-image bts::ImgNone"}
-    if {$hotk ne ""} {set hotk "-accelerator $hotk"}
-    switch [string index $typ 0] {
-      "s" {$popc add separator}
-      "c" {
-        $popc add command -label $label -command $comm \
-          {*}$dsbl -compound left {*}$comimg {*}$hotk
-      }
-      "m" {
-        if {$menu eq "bartabs_cascade" && !$usermnu && $static} {
-          set popc $pop  ;# no user mnu & static: only list of tabs be shown
-        } else {
-          menu $popc -tearoff 0
-          set popm [string range $popc 0 [string last . $popc]-1]
-          $popm add cascade -label $label -menu $popc \
-            {*}$dsbl -compound left {*}$comimg {*}$hotk
-        }
-        if {[string match "bartabs_cascade*" $menu]} {
-          set popi $popc
-          lappend lpopi $popi
-          set ilist [Bar_PopupFillList $barID $popi $tabID $menu]
-        }
-      }
-    }
-  }
-  foreach popi $lpopi {Bar_PopupTuneList $barID $tabID $popi $ilist $pop}
-  lassign [tab_Cget $tabID -wb1 -wb2] wb1 wb2
-  bind $pop <Unmap> [list bts::onLeaveTab $barID $tabID $wb1 $wb2]
-  tk_popup $pop $X $Y
-}
-
-# _________________________ Auxiliary procedures ________________________ #
-
-proc bts::Aux_WidgetWidth {w} {
+method Aux_WidgetWidth {w} {
   # Calculates the width of a widget
   #   w - the widget's path
 
@@ -1793,31 +1606,31 @@ proc bts::Aux_WidgetWidth {w} {
   if {$wwidth<2} {set wwidth [winfo reqwidth $w]}
   return $wwidth
 }
-#----------------------------------
+#__________
 
-proc bts::Aux_InitDraw {barID {clearpf yes}} {
+method Aux_InitDraw {BID {clearpf yes}} {
   # Auxiliary procedure used before the cycles drawing tabs.
-  #   barID - ID of the tab's bar
+  #   BID - bar ID
   #   clearpf - if "yes", clear the "-pf" attributes of tabs
 
-  Bar_InitColors $barID
-  lassign [bar_Cget $barID \
+  my $BID InitColors
+  lassign [my $BID cget \
     -tleft -hidearrows -LLEN -WWID -bd -wbase -wbar -ARRLEN -wproc] \
     tleft hidearr llen wwid bd wbase wbar arrlen wproc
   lassign $wwid wframe wlarr
   if {$arrlen eq ""} {
     set arrlen [winfo reqwidth $wlarr]
-    bar_Configure $barID -wbase $wbase -ARRLEN $arrlen
+    my $BID configure -wbase $wbase -ARRLEN $arrlen
   }
-  set bwidth [Bar_Width $barID]
+  set bwidth [my $BID Width]
   set vislen [expr {$tleft || !$hidearr ? $arrlen : 0}]
-  set tabs [bar_Cget $barID -TABS]
-  if {$clearpf} {foreach tab $tabs {tab_Configure [lindex $tab 0] -pf ""}}
+  set tabs [my $BID cget -TABS]
+  if {$clearpf} {foreach tab $tabs {my [lindex $tab 0] configure -pf ""}}
   return [list $bwidth $vislen $bd $arrlen $llen $tleft $hidearr $tabs $wframe]
 }
-#----------------------------------
+#__________
 
-proc bts::Aux_CheckTabVisible {wb wb1 wb2 i tleft trightN vislenN llen hidearr arrlen bd bwidth tabsN tabID text} {
+method Aux_CheckTabVisible {wb wb1 wb2 i tleft trightN vislenN llen hidearr arrlen bd bwidth tabsN TID text} {
   # Auxiliary procedure used in the cycles drawing tabs.
   #   wb - the tab's frame
   #   wb1 - the tab's label
@@ -1832,12 +1645,12 @@ proc bts::Aux_CheckTabVisible {wb wb1 wb2 i tleft trightN vislenN llen hidearr a
   #   bd - border of tab
   #   bwidth - width of bar of tabs
   #   tabsN - variable's name of tab list
-  #   tabID - the tab's ID
+  #   TID - the tab's ID
   #   text - the tab's label
   # Returns "yes", if the tab is visible.
 
   upvar 1 $trightN tright $tabsN tabs $vislenN vislen
-  incr vislen [tab_Cget $tabID -width]
+  incr vislen [my $TID cget -width]
   if {$i>$tleft && ($vislen+(($i+1)<$llen||!$hidearr?$arrlen:0))>$bwidth} {
     pack forget $wb
     set pf ""
@@ -1845,26 +1658,26 @@ proc bts::Aux_CheckTabVisible {wb wb1 wb2 i tleft trightN vislenN llen hidearr a
     set tright $i
     set pf "p"
   }
-  tab_Configure $tabID -wb $wb -wb1 $wb1 -wb2 $wb2 -pf $pf
+  my $TID configure -wb $wb -wb1 $wb1 -wb2 $wb2 -pf $pf
   return [string length $pf]
 }
-#----------------------------------
+#__________
 
-proc bts::Aux_EndDraw {barID tleft tright llen} {
+method Aux_EndDraw {BID tleft tright llen} {
   # Auxiliary procedure used after the cycles drawing tabs.
-  #   barID - ID of the tab's bar
+  #   BID - bar ID
   #   tleft - left tab's index to be shown
   #   tright - right tab's index to be shown
   #   llen - length of tabs' list
 
-  Bar_ArrowsState $barID $tleft $tright [expr {$tright < ($llen-1)}]
-  bar_Configure $barID -tleft $tleft -tright $tright
-  Tab_Bindings $barID
-  Tab_MarkBar $barID
+  my $BID ArrowsState $tleft $tright [expr {$tright < ($llen-1)}]
+  my $BID configure -tleft $tleft -tright $tright
+  my Tab_Bindings $BID
+  my Tab_MarkBar $BID
 }
-#----------------------------------
+#__________
 
-proc bts::Aux_IndexInList {ID lst} {
+method Aux_IndexInList {ID lst} {
   # Searches ID in a list.
   #   ID - ID
   #   lst - dictionary
@@ -1877,8 +1690,145 @@ proc bts::Aux_IndexInList {ID lst} {
   }
   return -1
 }
+} ;# --- bartabs::Bar
 
-# _________________________________ EOF _________________________________ #
+# ___________________________ Methods of Bars ___________________________ #
 
-#RUNF0: test.tcl     ;# to test from e_menu without switching to test*.tcl
+oo::define ::bartabs::Bars {
+
+variable btData ;# dictionary of bars & tabs data
+
+constructor {args} {
+  set btData [dict create]
+  if {[llength [self next]]} { next {*}$args }
+  oo::objdefine [self] "method tab-1 {args} {return {}}"
+}
+
+destructor {
+  my removeAll
+  unset btData
+  if {[llength [self next]]} next
+}
+#__________
+
+method Bars_Method {mtd args} {
+  # Executes a method for all tab bars.
+  #   mtd - method to be run
+  #   args - arguments of the method
+
+  foreach BID [lsort -decreasing [dict keys $btData]] {my $BID $mtd {*}$args}
+}
+#__________
+
+method create {barName barInfo} {
+  # Creates a tab bar.
+  #   barName  - name of variable for the bar
+  #   barInfo - list of bar's data
+
+  upvar 1 $barName bar
+  set w [dict get $barInfo -wbar] ;# parent window (a frame, most likely)
+  set wframe $w.frame ;# frame for tabs
+  set wlarr $w.larr   ;# left scrolling button
+  set wrarr $w.rarr   ;# right scrolling button
+  lappend barInfo -WWID [list $wframe $wlarr $wrarr]
+  my My [set BID [my Bar_Data $barInfo]]
+  my $BID Style
+  ttk::button $wlarr -style ClButton$BID -image ::bartabs::ImgLeftArr \
+    -command [list [self] $BID ScrollLeft] -takefocus 0
+  ttk::button $wrarr -style ClButton$BID -image ::bartabs::ImgRightArr \
+    -command [list [self] $BID ScrollRight] -takefocus 0
+  ttk::frame $wframe -relief flat
+  pack $wlarr -side left -padx 0 -pady 0 -anchor e
+  pack $wframe -after $wlarr -side left -padx 0 -pady 0 -fill x -expand 1
+  pack $wrarr -after $wframe -side right -padx 0 -pady 0 -anchor w
+  foreach w {wlarr wrarr} {
+    bind [set $w] <Button-3> "[self] $BID popList %X %Y"
+  }
+  lassign [my $BID cget -wbase -redraw] wbase redraw
+  if {$wbase ne "" && $redraw} {
+    my $BID configure -BINDWBASE [list $wbase [bind $wbase <Configure>]]
+    bind $wbase <Configure> [list + [self] $BID NeedDraw]
+  }
+  after idle [list [self] $BID NeedDraw ; [self] $BID draw]
+}
+#__________
+
+method updateAll {} {
+  # Updates all tab bars.
+
+  my Bars_Method Refill 0 yes
+}
+#__________
+
+method drawAll {{doupdate yes}} {
+  # Redraws all tab bars.
+  #   doupdate - if "yes", performs 'update' before redrawing
+
+ if {$doupdate} update
+ my Bars_Method draw no
+}
+#__________
+
+method removeAll {} {
+  # Removes all tab bars.
+
+  my Bars_Method remove
+}
+#__________
+
+method mark {args} {
+  # Marks tab(s) in bars.
+  #   args - list of ID of tabs to be marked
+
+  foreach TID $args {
+    if {$TID ne ""} {
+      set BID [lindex [my Tab_BID $TID] 0]
+      set marktabs [my $BID cget -marktabs]
+      if {[lsearch $marktabs $TID]<0} {
+        lappend marktabs $TID
+        my $BID configure -marktabs $marktabs
+      }
+    }
+  }
+  my Tab_MarkBars
+}
+#__________
+
+method unmark {args} {
+  # Unmarks tab(s) in bars.
+  #   args - list of ID of tabs to be unmarked
+
+  foreach TID $args {
+    set BID [lindex [my Tab_BID $TID] 0]
+    set marktabs [my $BID cget -marktabs]
+    if {[set i [lsearch $marktabs $TID]]>=0} {
+      my $BID configure -marktabs [lreplace $marktabs $i $i]
+    }
+  }
+  my Tab_MarkBars
+}
+#__________
+
+method move {TID1 TID2} {
+  # Moves a tab to a new position.
+  #   TID1 - ID of the moved tab
+  #   TID2 - ID of a tab the moved tab should be behind
+  # TID1 and TID2 should be of the same bar.
+
+  lassign [my Tab_BID $TID1] BID1 i1
+  lassign [my Tab_BID $TID2] BID2 i2
+  if {$i1!=$i2 && $BID1 eq $BID2} {
+    set tabs [my $BID1 cget -TABS]
+    set tab [lindex $tabs $i1]
+    set tabs [lreplace $tabs $i1 $i1]
+    set i [expr {$i1>$i2?($i2+1):$i2}]
+    my $BID1 configure -TABS [linsert $tabs $i $tab]
+    my $TID1 tab_Show 1
+  }
+}
+} ;# --- bartabs::Bars
+
+# __________________________ Tests for e_menu ___________________________ #
+
+#RUNF0: test.tcl
 #RUNF1: ../tests/test2_pave.tcl

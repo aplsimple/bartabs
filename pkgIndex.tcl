@@ -1,9 +1,9 @@
 
-package ifneeded bartabs 1.0b4 [list source [file join $dir bartabs.tcl]]
+package ifneeded bartabs 1.0b7 [list source [file join $dir bartabs.tcl]]
 
 # short intro (for Ruff! docs generator)
 
-namespace eval bts {
+namespace eval bartabs {
 
   set _ruff_preamble {
 
