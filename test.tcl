@@ -31,25 +31,26 @@ xEhpdgYIMABQrSEzlY7wIwAAAABJRU5ErkJggg==}
 #----------------------------------
 
 proc ::TestDel {b t l} {
-  return [expr {[tk_messageBox -title "Closing \"$l\"" \
+  set res [tk_messageBox -title "Closing \"$l\"" \
     -message "\nReally close \"$l\"?" \
     -detail "\nDetails: bar=$b tab=$t label=$l" \
-    -icon question -type yesno] eq "yes"}]
+    -icon question -type yesnocancel]
+  return [expr {$res eq "yes" ? 1 : ($res eq "no" ? 0 : -1)}]
 }
 
 #----------------------------------
 
 proc ::TestAdd {BID} {
   set newTID [::bts $BID insertTab $::noname]
-  if {$newTID==-1} {
-    set newTID [::bts $BID getTabID $::noname]
-    if {$newTID==-1} {
+  if {$newTID==""} {
+    set newTID [::bts $BID tabID $::noname]
+    if {$newTID==""} {
       tk_messageBox -title "Error" -message "  \nThe tab not created." \
         -icon error -type ok
       return
     }
   }
-  ::bts $newTID tab_Show
+  ::bts $newTID show
 }
 
 #----------------------------------
@@ -58,11 +59,11 @@ proc ::TestSwitch {BID TID optname} {
   set val [::bts $BID cget $optname]
   if {[expr {$val eq "" || !$val}]} {set val yes} {set val no}
   ::bts $BID configure $optname $val
-  if {$optname in {-static -hidearrows -expand -bd}} {::bts updateAll}
+  if {$optname in {-static -hidearrows -expand -bd}} {::bts $BID update}
   set bwidth [::bts $BID cget -width]
-  set twidth [::bts $TID cget -width]
+  set twidth [expr {[::bts isTab $TID]?[::bts $TID cget -width]:0}]
   tk_messageBox -title "Info" -message "  \nThe \"$optname\" option is \"$val\"." \
-    -detail "\n#$BID bar's width is $bwidth.\n#$TID tab's width is $twidth." \
+    -detail "\n$BID's width is $bwidth.\n$TID's width is $twidth." \
     -icon info -type ok
 }
 
@@ -77,12 +78,13 @@ proc ::TestComm {oper args} {
 
 proc ::TestViewSel {BID} {
   set sellist ""
-  lassign [::bts $BID listSel] fewsel tcurr
+  set fewsel [::bts $BID listFlag "s"] 
+  set tcurr [::bts $BID cget -tabcurrent]
   foreach TID $fewsel {
     set text [::bts $TID cget -text]
     append sellist "TID: $TID, label: $text\n"
   }
-  if {$tcurr==-1} {
+  if {$tcurr eq ""} {
     set text ""
   } else {
     set text [::bts $tcurr cget -text]
@@ -117,8 +119,8 @@ proc ::FillBarTabs {} {
   toplevel $::frm
   wm minsize $::frm 200 350
   wm geometry $::frm +80+80
-  wm protocol $::frm WM_DELETE_WINDOW exit
-  ttk::label $::l0 -text "Absolutely static with \"-expand 1\" option:"
+  wm protocol $::frm WM_DELETE_WINDOW {::bts destroy; exit}
+  ttk::label $::l0 -text "Absolutely static:"
   ttk::label $::l1 -text [string repeat "0123456789" 6]
   ttk::label $::l2 -text [string repeat "0123456789" 12]
   ttk::frame $::w0
@@ -140,7 +142,7 @@ proc ::FillBarTabs {} {
   pack $::w4 -side left -after $::w3 -expand 1 -fill x -anchor ne
 
   set barOpts0 [list -wbar $::w0 -wbase $::frm -wproc "winfo width $::l1" \
-    -static yes -hidearrows yes -padx 12 -pady 6 -csel "::TestComm sel %b %t {%l}"]
+    -static yes -hidearrows yes -padx 6 -pady 6 -csel "::TestComm sel %b %t {%l}"]
 
   set barOpts1 [list -tleft 1 -tright 5 -wbar $::w1 -fgsel "" \
     -wbase $::frm -wproc "winfo width $::l1" \
@@ -151,7 +153,7 @@ proc ::FillBarTabs {} {
     "com {Switch -hidearrows option} {::TestSwitch %b %t -hidearrows}"] ]
 
   set barOpts2 [list -wbar $::w2 -wbase $::l2 \
-    -lablen 11 -expand 0 -imagemark markimg \
+    -lablen 11 -expand 0 -imagemark markimg -tiplen 15 \
     -tleft 3 -fgsel black -bgsel #999999 \
     -cmov {::TestComm mov %b %t {%l}} \
     -csel {::TestComm sel %b %t {%l}} \
@@ -162,8 +164,8 @@ proc ::FillBarTabs {} {
     sep \
     "com {Switch -expand option} {::TestSwitch %b %t -expand}" ]]
   
-  set barOpts3 [list -wbar $::w5 -wbase $::frm -wproc \
-    "expr {\[winfo width $::frm\]-\[winfo width $::l3\]-80}" -tleft 7 -bd 0 -pady 0 \
+  set barOpts3 [list -wbar $::w5 -wbase $::frm -tleft 7 -bd 0 -pady 0 \
+    -wproc "expr {\[winfo width $::frm\]-\[winfo width $::l3\]-80}" \
     -menu [list sep "com {Switch -bd option} {::TestSwitch %b %t -bd}"]]
   
   lappend barOpts1 -tab "#0 tab item" ;# to test for duplicates
@@ -175,11 +177,16 @@ proc ::FillBarTabs {} {
     lappend barOpts2 -tab $tab
     lappend barOpts3 -tab $tab
   }
-  ::bartabs::Bars create ::bts
+  for {set n 0} {$n<40} {incr n} {    ;# set 100 to make it be idiotic
+    set tab "#$n tab item[string repeat ~ [expr $n/2]]"
+    lappend barOpts2 -tab $tab
+    lappend barOpts3 -tab $tab
+  }
+  bartabs::Bars create ::bts
   ::bts create ::bar0 $barOpts0
   ::bts create ::bar1 $barOpts1
-  ::bts create ::bar2 $barOpts2
-  ::bts create ::bar3 $barOpts3
+  set ::bar2 [::bts create $barOpts2]
+  set ::bar3 [::bts create $barOpts3]
 }
 
 #----------------------------------
@@ -193,21 +200,41 @@ try {ttk::style theme use clam}
 
 ::FillBarTabs
 
-if {0} {
+if {10} {
   ####### some mimicring actions with bars & tabs:
   toplevel .mimi
-  label .mimi.l -text "\n\n <== Please wait 5 seconds\n\n <== while seeing this test.\n\n" -fg #800080 -font "-size 12"
+  label .mimi.l -text "\n\n <== Please wait 7 seconds\n\n <== while seeing this test.\n\n" -fg #800080 -font "-size 12"
   lassign [split [winfo geometry $::frm] x+] w h x y
   lassign [split [winfo geometry .mimi] x+] ::w2 h2
   wm geometry .mimi +$x+[expr {$y+$h+10}]
   pack .mimi.l
   update
-  after 1000 {::bts tab5 tab_Show ; ::bts tab15 tab_Show}
-  after 2000 {::bts mark tab12 tab16 tab18 tab19}
-  after 3000 {::bts unmark tab12 tab18 tab19}
-  after 4000 {::bts bar2 insertTab "Button 0.5" 1}
-  after 4500 {::bts tab12 configure -text "==12th tab==" ; ::bts tab12 tab_Show}
-  after 5000 {::bts tab19 tab_Close}
+  after 1000 {::bts tab4 show ; ::bts tab15 show}
+  after 2000 {::bts markTab tab11 tab15 tab17 tab18}
+  after 2500 {::bar0 disableTab tab19 tab3}  ;# any bar can use disable/mark
+  after 3000 {::bts unmarkTab tab11 tab17 tab18}
+  after 3500 {::bts enableTab tab3}
+  after 4000 {::bar0 insertTab "-0.5 item" 0}
+  after 4000 {::bar1 insertTab "Button 0.5" 1}
+  after 4000 [list ::bts $::bar2 insertTab "Button 0.5" 1]
+  after 4500 {::bts tab11 configure -text "==12th tab==" ; ::bts tab11 show}
+  after 5000 {::bts tab18 close}
   after 5050 {if {[winfo exists .mimi]} {destroy .mimi}}
-  after 6000 {::bts destroy}
+  after 6000 {::bts tab11 drawAll ;
+    ::bar1 create ::tab8 "#8 tab item~~~~"
+    ::bar1 create ::tab9 "#9 tab item~~~~"
+    ::tab8 configure -text "#8 TAB ITEM"
+    ::tab9 configure -text "#9 TAB ITEM"
+    ::bar1 create ::tab82 "#8 TAB ITEM"  ;# the same ::tab8
+    ::bar1 create ::tab92 "#9 TAB ITEM"
+    ::tab92 disableTab tab2
+    ::bts bar1 markTab tab19  ;# Bars don't forbid using (useless though) TID/BID
+  }
+  after 6500 {
+    ::bar1 configure -tleft 7 -tright end
+    ::bar1 clear
+    ::bar1 draw
+  #after 7000 {::bts destroy}  ;# testing destructor
+  }
+
 }  
