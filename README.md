@@ -12,9 +12,9 @@
 
   The *bartabs* defines three TclOO classes:
 
-    - *Tab* deals with tabs
-    - *Bar* deals with a bar of tabs
-    - *Bars* deals with bars of tabs
+    - Tab deals with tabs
+    - Bar deals with a bar of tabs
+    - Bars deals with bars of tabs
 
   However, only the *Bars* class is used to create bars along with tabs. It can be also used to deal with any bars and tabs, providing all necessary interface.
 
@@ -24,15 +24,15 @@
 
   A common work flow with *bartabs* looks like this:
 
-  1) Firstly, we create a *Bars* object, e.g.
+  Firstly, we create a *Bars* object, e.g.
   
    `bartabs::Bars create NS::bars`
 
-  2) Then we create a *Bar* object, e.g.
+  Then we create a *Bar* object, e.g.
   
    `NS::bars create NS::bar $barOptions`
 
-  3) If a tab of the bar should be displayed (with its possible contents), we show the bar and select the current tab:
+  If a tab of the bar should be displayed (with its possible contents), we show the bar and select the current tab:
 
     `set TID [NS::bar tabID "tab label"]  ;# get the tab's ID by its label`
 
@@ -42,7 +42,7 @@
 
     `NS::bar draw  ;# show the bar without selecting a tab`
 
-  4) The rest actions include:
+  The rest actions include:
 
     - responses to a selection of tab (through `-csel command` option of *Bar* object)
     - responses to a deletion of tab (through `-cdel command` option of *Bar* object)
