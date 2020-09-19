@@ -177,7 +177,7 @@ proc ::FillBarTabs {} {
     lappend barOpts2 -tab $tab
     lappend barOpts3 -tab $tab
   }
-  for {set n 0} {$n<40} {incr n} {    ;# set 100 to make it be idiotic
+  for {set n 0} {$n<=40} {incr n} {    ;# set 100 to make it be idiotic
     set tab "#$n tab item[string repeat ~ [expr $n/2]]"
     lappend barOpts2 -tab $tab
     lappend barOpts3 -tab $tab
@@ -200,15 +200,16 @@ try {ttk::style theme use clam}
 
 ::FillBarTabs
 
-if {10} {
+if {1} {
   ####### some mimicring actions with bars & tabs:
   toplevel .mimi
-  label .mimi.l -text "\n\n <== Please wait 7 seconds\n\n <== while seeing this test.\n\n" -fg #800080 -font "-size 12"
+  label .mimi.l -text "\n Please wait 10 seconds \n while seeing this test. \n" -fg black -bg #f4eca1 -font {-weight bold}
   lassign [split [winfo geometry $::frm] x+] w h x y
   lassign [split [winfo geometry .mimi] x+] ::w2 h2
   wm geometry .mimi +$x+[expr {$y+$h+10}]
   pack .mimi.l
   update
+  after 3000
   after 1000 {::bts tab4 show ; ::bts tab15 show}
   after 2000 {::bts markTab tab11 tab15 tab17 tab18}
   after 2500 {::bar0 disableTab tab19 tab3}  ;# any bar can use disable/mark
