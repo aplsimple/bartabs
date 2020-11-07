@@ -1,5 +1,5 @@
 
-package ifneeded bartabs 1.0.2 [list source [file join $dir bartabs.tcl]]
+package ifneeded bartabs 1.0.3 [list source [file join $dir bartabs.tcl]]
 
 # short intro (for Ruff! docs generator)
 
@@ -127,11 +127,13 @@ instead of
 
 <hr>
 
-More details:
+Links:
 
 [Documentation](https://aplsimple.github.io/en/tcl/bartabs)
 
-[Reference](https://aplsimple.github.io/en/tcl/bartabs/bartabs.html)
+[Reference on bartabs](https://aplsimple.github.io/en/tcl/bartabs/bartabs.html)
+
+[Reference on tooltip4](https://aplsimple.github.io/en/tcl/tooltip4/tooltip4.html) (the package used by *bartabs*)
   }
 
 }

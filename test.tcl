@@ -203,7 +203,7 @@ try {ttk::style theme use clam}
 if {1} {
   ####### some mimicring actions with bars & tabs:
   toplevel .mimi
-  label .mimi.l -text "\n Please wait 10 seconds \n while seeing this test. \n" -fg black -bg #f4eca1 -font {-weight bold}
+  label .mimi.l -text "\n Please wait 7 seconds \n while seeing this test. \n" -fg black -bg #f4eca1 -font {-weight bold}
   lassign [split [winfo geometry $::frm] x+] w h x y
   lassign [split [winfo geometry .mimi] x+] ::w2 h2
   wm geometry .mimi +$x+[expr {$y+$h+10}]
