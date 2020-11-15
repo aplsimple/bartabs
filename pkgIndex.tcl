@@ -1,5 +1,5 @@
 
-package ifneeded bartabs 1.0.3 [list source [file join $dir bartabs.tcl]]
+package ifneeded bartabs 1.0.4 [list source [file join $dir bartabs.tcl]]
 
 # short intro (for Ruff! docs generator)
 
@@ -133,7 +133,7 @@ Links:
 
 [Reference on bartabs](https://aplsimple.github.io/en/tcl/bartabs/bartabs.html)
 
-[Reference on tooltip4](https://aplsimple.github.io/en/tcl/tooltip4/tooltip4.html) (the package used by *bartabs*)
+[Reference on baltip](https://aplsimple.github.io/en/tcl/baltip/baltip.html) (the package used by *bartabs*)
   }
 
 }
