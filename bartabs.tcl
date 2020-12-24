@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.0.5
+package provide bartabs 1.1
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -16,6 +16,7 @@ namespace eval bartabs {
 
   # IDs for new bars & tabs
   variable NewBarID -1 NewTabID -1 NewTabNo -1
+  variable NewAfterID;  array set NewAfterID [list]
 
   # images made by base64
   image create photo bts_ImgLeft \
@@ -143,7 +144,7 @@ method My {ID} {
   set t [string range $ID 0 2]
   oo::objdefine [self] "method $ID {args} {
   set m \[lindex \$args 0\]
-  if {\$m eq {}} {return {}}
+  if {\$m in {{} -1}} {return {}}
   if {\$m in {create} && {$t} eq {bar} || \$m in {cget configure} && {$t} eq {tab}} {
   set args \[lreplace \$args 0 0 Tab_\$m\]}
   return \[my {*}\$args\]}"
@@ -966,7 +967,7 @@ method Bar_Data {barOptions} {
   set barOpts [dict create -wbar ""  -wbase "" -wproc "" -static no \
     -hidearrows no -scrollsel yes -lablen 0 -tiplen 0 -tleft 0 -tright end \
     -disable [list] -select [list] -mark [list] -fgmark #800080  -fgsel "." \
-    -relief groove -bd 1 -padx 3 -pady 3 -expand 1 -tabcurrent -1 \
+    -relief groove -bd 1 -padx 3 -pady 3 -expand 1 -tabcurrent -1 -dotip no \
     -ELLIPSE "\u2026" -MOVWIN ".bt_move" -ARRLEN 0 -USERMNU 0 -LLEN 0]
   set tabinfo [set imagetabs [set popup [list]]]
   my Bar_DefaultMenu $BID popup
@@ -1391,7 +1392,8 @@ method NeedDraw {} {
     my $BID configure -BWIDTH $bw
   }
   if {$bwo ne "" && $need} {
-    after idle [list [self] $BID draw]
+    catch {after cancel $::bartabs::NewAfterID($BID)}
+    set ::bartabs::NewAfterID($BID) [after 10 [list [self] $BID draw]]
   }
 }
 
@@ -1549,12 +1551,11 @@ method clear {} {
 }
 #_____
 
-method scrollLeft {{dotip no}} {
+method scrollLeft {} {
   # Scrolls tabs to the left.
-  #  dotip - flag 'show tip'
 
   set BID [my ID]
-  set w [my $BID cget -wbar]
+  lassign [my $BID cget -wbar -dotip] w dotip
   set wlarr $w.larr   ;# left arrow
   if {[my $BID ScrollCurr -1]} {
     if {$dotip} {catch {::baltip::repaint $wlarr}}
@@ -1573,12 +1574,11 @@ method scrollLeft {{dotip no}} {
 }
 #_____
 
-method scrollRight {{dotip no}} {
+method scrollRight {} {
   # Scrolls tabs to the right.
-  #  dotip - flag 'show tip'
 
   set BID [my ID]
-  set w [my $BID cget -wbar]
+  lassign [my $BID cget -wbar -dotip] w dotip
   set wrarr $w.rarr   ;# left arrow
   if {[my $BID ScrollCurr 1]} {
     if {$dotip} {catch {::baltip::repaint $wrarr}}
@@ -1804,9 +1804,9 @@ method create {barCom {barOpts ""}} {
   my My [set BID [my Bar_Data $barOpts]]
   my $BID Style
   ttk::button $wlarr -style ClButton$BID -image bts_ImgLeft \
-    -command [list [self] $BID scrollLeft yes] -takefocus 0
+    -command [list [self] $BID scrollLeft] -takefocus 0
   ttk::button $wrarr -style ClButton$BID -image bts_ImgRight \
-    -command [list [self] $BID scrollRight yes] -takefocus 0
+    -command [list [self] $BID scrollRight] -takefocus 0
   ttk::frame $wframe -relief flat
   pack $wlarr -side left -padx 0 -pady 0 -anchor e
   pack $wframe -after $wlarr -side left -padx 0 -pady 0 -fill x -expand 1
