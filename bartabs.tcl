@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.1
+package provide bartabs 1.1.1
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -939,7 +939,7 @@ method close {{redraw yes}} {
   set tabs [lreplace $tabs $icurr $icurr]
   my $BID configure -TABS $tabs
   if {$redraw} {
-    if {$icurr>=$tleft && $icurr<$tright} {
+    if {$icurr>=$tleft && $icurr<[llength $tabs]} {
       my $BID draw
       my [lindex $tabs $icurr 0] Tab_BeCurrent
     } else {
@@ -1928,5 +1928,5 @@ method moveTab {TID1 TID2} {
 } ;#  bartabs::Bars
 
 # ________________________________ EOF __________________________________ #
-#-RUNF0: test.tcl
+#RUNF0: test.tcl
 #RUNF1: ../tests/test2_pave.tcl
