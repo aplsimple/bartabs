@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.1.1
+package provide bartabs 1.2
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -904,7 +904,7 @@ method OnPopup {X Y {BID "-1"} {TID "-1"} {textcur ""}} {
 
 # _________________________ Public methods of Tab _______________________ #
 
-method show {{anyway no}} {
+method show {{anyway yes}} {
 # Shows a tab in a bar and sets it current.
 #   anyway - if "yes", refill the bar anyway (for choosing from menu)
 
@@ -1789,10 +1789,11 @@ method UnmarkTab {opt args} {
 
 # ________________________ Public methods of Bars _______________________ #
 
-method create {barCom {barOpts ""}} {
+method create {barCom {barOpts ""} {dodraw yes}} {
 # Creates a bar.
 #   barCom - bar command's name or barOpts
 #   barOpts - list of bar's options
+#   dodraw - if yes, draws the bar after creation
 # Returns BID.
 
   if {[set noComm [expr {$barOpts eq ""}]]} {set barOpts $barCom}
@@ -1817,9 +1818,11 @@ method create {barCom {barOpts ""}} {
   set wbase [my $BID cget -wbase]
   if {$wbase ne ""} {
     my $BID configure -BINDWBASE [list $wbase [bind $wbase <Configure>]]
-    bind $wbase <Configure> [list + [self] $BID NeedDraw]
+    after idle [list bind $wbase <Configure> [list + [self] $BID NeedDraw]]
   }
-  after idle [list [self] $BID NeedDraw ; [self] $BID draw]
+  if {$dodraw} {
+    after idle [list [self] $BID NeedDraw ; [self] $BID draw]
+  }
   if {!$noComm} {
     proc $barCom {args} "return \[[self] $BID {*}\$args\]"
     my $BID configure -BARCOM $barCom
