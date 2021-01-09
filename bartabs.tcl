@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.2
+package provide bartabs 1.2.1
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -1789,11 +1789,11 @@ method UnmarkTab {opt args} {
 
 # ________________________ Public methods of Bars _______________________ #
 
-method create {barCom {barOpts ""} {dodraw yes}} {
+method create {barCom {barOpts ""} {tab1 ""}} {
 # Creates a bar.
 #   barCom - bar command's name or barOpts
 #   barOpts - list of bar's options
-#   dodraw - if yes, draws the bar after creation
+#   tab1 - tab to show after creating the bar
 # Returns BID.
 
   if {[set noComm [expr {$barOpts eq ""}]]} {set barOpts $barCom}
@@ -1817,15 +1817,19 @@ method create {barCom {barOpts ""} {dodraw yes}} {
   }
   set wbase [my $BID cget -wbase]
   if {$wbase ne ""} {
-    my $BID configure -BINDWBASE [list $wbase [bind $wbase <Configure>]]
-    after idle [list bind $wbase <Configure> [list + [self] $BID NeedDraw]]
-  }
-  if {$dodraw} {
-    after idle [list [self] $BID NeedDraw ; [self] $BID draw]
+    after 1 [list \
+    my $BID configure -BINDWBASE [list $wbase [bind $wbase <Configure>]] ; \
+    bind $wbase <Configure> [list + [self] $BID NeedDraw]]
   }
   if {!$noComm} {
     proc $barCom {args} "return \[[self] $BID {*}\$args\]"
     my $BID configure -BARCOM $barCom
+  }
+  if {$tab1 eq ""} {
+    after 100 [list [self] $BID NeedDraw ; [self] $BID draw]
+  } else {
+    set tab1 [my $BID tabID $tab1]
+    if {$tab1 ne ""} {after 200 "[self] $BID clear; [self] $BID $tab1 show"}
   }
   return $BID
 }
