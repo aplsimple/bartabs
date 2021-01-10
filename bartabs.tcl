@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.2.1
+package provide bartabs 1.2.2
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -1397,6 +1397,25 @@ method NeedDraw {} {
   }
 }
 
+# _________________ Exported 'internal' methods of Bar __________________ #
+
+method _runBound_ {w ev args} {
+# Runs a method bound to an event occuring at a widget.
+#   w - widget
+#   ev - event
+#   args - the bound method & its arguments
+
+  if {[catch {my {*}$args}]} { ;# failed binding => remove it
+    foreach b [split [bind $w $ev] \n] {
+      if {[string first $args $b]==-1} {
+        if {[incr is1]==1} {bind $w $ev $b} {bind $w $ev +$b}
+      }
+    }
+  }
+}
+
+export _runBound_
+
 # _______________________ Auxiliary methods of Bar ______________________ #
 
 method Aux_WidgetWidth {w} {
@@ -1819,7 +1838,7 @@ method create {barCom {barOpts ""} {tab1 ""}} {
   if {$wbase ne ""} {
     after 1 [list \
     my $BID configure -BINDWBASE [list $wbase [bind $wbase <Configure>]] ; \
-    bind $wbase <Configure> [list + [self] $BID NeedDraw]]
+    bind $wbase <Configure> [list + [self] _runBound_ $wbase <Configure> $BID NeedDraw]]
   }
   if {!$noComm} {
     proc $barCom {args} "return \[[self] $BID {*}\$args\]"
