@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.2.6
+package provide bartabs 1.2.7
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -1499,13 +1499,14 @@ method cget {args} {
   set BID [my ID]
   variable btData
   set res [list]
+  set llen [dict get $btData $BID -LLEN]
   foreach opt $args {
     if {$opt eq "-listlen"} {
-      lappend res [dict get $btData $BID -LLEN]
+      lappend res $llen
     } elseif {$opt eq "-width"} {
       lassign [dict get [dict get $btData $BID] -wbar] wbar
       lappend res [my Aux_WidgetWidth $wbar]
-    } elseif {[dict exists $btData $BID $opt]} {
+    } elseif {[dict exists $btData $BID $opt] && ($llen || $opt ne "-tabcurrent")} {
       lappend res [dict get $btData $BID $opt]
     } else {
       lappend res ""
