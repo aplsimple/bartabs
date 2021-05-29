@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.4.2
+package provide bartabs 1.4.3
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -921,7 +921,7 @@ method OnPopup {X Y {BID "-1"} {TID "-1"} {textcur ""}} {
       lassign [{*}$dsbl $BID $TID $label] dsbl comimg comlabel hotk
     } else {
       lassign $dsbl dsbl comimg comlabel hotk
-      catch {set dsbl [expr $dsbl]}
+      if {$dsbl ne ""} {set dsbl [expr $dsbl]}
       set dsbl [expr {([string is boolean $dsbl] && $dsbl ne "")?$dsbl:0}]
     }
     if {$dsbl eq "2"} continue  ;# 2 - "hide"; 1 - "disable"; 0 - "normal"
@@ -1120,9 +1120,9 @@ method Bar_DefaultMenu {BID popName} {
   upvar 1 $popName pop
   set bar "[self] $BID"
   set dsbl "{$bar CheckDsblPopup}"
-  lassign [my Mc_MenuItems] close closeall closeleft closeright
+  lassign [my Mc_MenuItems] list behind close closeall closeleft closeright
   foreach item [list \
-  "m {List} {} bartabs_cascade" \
+  "m {$list} {} bartabs_cascade" \
   "m {BHND} {} bartabs_cascade2 $dsbl" \
   "s {} {} {} $dsbl" \
   "c {$close} {[self] %t close} {} $dsbl" \
@@ -1145,7 +1145,11 @@ method Bar_MenuList {BID TID popi {ilist ""} {pop ""}} {
   lassign [my $BID cget -tabcurrent -select -FGOVER -BGOVER -lowlist] \
     tabcurr fewsel fgo bgo ll
   if {$ll || [catch {set fs "-size [dict get [$pop cget -font] -size]"}]} {
-    set fs ""
+    if {$ll && [string is digit $ll] && $ll>1} {
+      set fs "-size $ll"
+    } else {
+      set fs ""
+    }
   }
   for {set i 0} {$i<[llength $ilist]} {incr i} {
     if {[set tID [lindex $ilist $i]] eq "s"} continue
@@ -1180,10 +1184,15 @@ method Bar_Cmd2 {comopt2 {TID ""}} {
 
 method Mc_MenuItems {} {
   # Returns localized menu items' label.
-  return [list [msgcat::mc Close] \
-               [msgcat::mc {Close All}] \
-               [msgcat::mc {Close All at Left}] \
-               [msgcat::mc {Close All at Right}]]
+
+  namespace eval ::bartabs {
+    return [list [msgcat::mc List] \
+                 [msgcat::mc behind] \
+                 [msgcat::mc Close] \
+                 [msgcat::mc {... All}] \
+                 [msgcat::mc {... All at Left}] \
+                 [msgcat::mc {... All at Right}]]
+  }
 }
 
 #_____
@@ -1490,7 +1499,7 @@ method CheckDsblPopup {BID TID mnuit} {
   lassign [my Tab_BID $TID] BID icur
   lassign [my $BID cget -static -LLEN] static llen
   set dsbl [my Disabled $TID]
-  lassign [my Mc_MenuItems] close closeall closeleft closeright
+  lassign [my Mc_MenuItems] list behind close closeall closeleft closeright
   switch -exact -- $mnuit [list \
     "BHND" {
       if {$static} {return 2}
@@ -1500,7 +1509,6 @@ method CheckDsblPopup {BID TID mnuit} {
         lassign [my Tab_TextEllipsed $BID [my $TID cget -text] 16] mnuit
         set mnuit "\"$mnuit\""
       }
-      set behind [msgcat::mc "behind"]
       return [list [expr {$dsbl||$llen<2||$llen==2&&$icur==1}] {} "$mnuit $behind"]
     } \
     $close - $closeall - "" {
@@ -1890,7 +1898,7 @@ method checkDisabledMenu {BID TID func} {
 #   3 - for "Close All at Right"
 # Returns "yes" if the menu's item is disabled.
 
-  lassign [my Mc_MenuItems] close closeall closeleft closeright
+  lassign [my Mc_MenuItems] list behind close closeall closeleft closeright
   switch $func {
     1 {set item $closeall}
     2 {set item $closeleft}
@@ -2148,6 +2156,9 @@ method moveSelTab {TID1 TID2} {
 # TID1 and TID2 must be of the same bar.
 
   set BID [my Tab_BID $TID1 check]
+  # -lifo option prevents moving, so it has to be temporarily disabled
+  set lifo [my $BID cget -lifo]
+  my $BID configure -lifo no
   set seltabs [my $BID listFlag "s"]
   if {[set i [llength $seltabs]]>1} {
     for {incr i -1} {$i>=0} {incr i -1} {
@@ -2157,10 +2168,11 @@ method moveSelTab {TID1 TID2} {
   } else {
     my MoveTab $TID1 $TID2
   }
+  my $BID configure -lifo $lifo  ;# restore -lifo option
 }
 } ;#  bartabs::Bars
 
 # ________________________________ EOF __________________________________ #
-#RUNF1: ../../src/alited.tcl
+#RUNF1: ../../src/alited.tcl DEBUG
 #RUNF0: test.tcl
 #RUNF1: ../tests/test2_pave.tcl
