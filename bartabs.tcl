@@ -7,7 +7,7 @@
 # _______________________________________________________________________ #
 
 package require Tk
-package provide bartabs 1.5.8
+package provide bartabs 1.5.9b1
 catch {package require baltip}
 
 # __________________ Common data of bartabs:: namespace _________________ #
@@ -192,8 +192,8 @@ method Tab_Create {BID TID w text} {
 # Returns a list of created widgets of the tab.
 
   lassign [my $BID cget -relief -bd -padx -pady -BGMAIN] relief bd padx pady bgm
-  set bd [expr {$bd?1:0}]
   lassign [my $TID cget -wb -wb1 -wb2] wb wb1 wb2
+  if {!$bd} {set relief flat}
   if {![my Tab_Is $wb]} {
     if {$wb eq {}} {
       set bartabs::NewTabNo [expr {($bartabs::NewTabNo+1)%1000000}]
@@ -202,21 +202,19 @@ method Tab_Create {BID TID w text} {
       set wb2 $wb.b
     }
     my $TID configure -wb $wb -wb1 $wb1 -wb2 $wb2
-    ttk::frame $wb -relief $relief -borderwidth $bd
-    ttk::label $wb1 -relief flat -padding "$padx $pady $padx $pady" \
-      {*}[my Tab_Font $BID]
+    ttk::frame $wb -borderwidth [expr {$bd? $bd : 2}]
+    ttk::label $wb1
     if {[my TtkTheme]} {
       ttk::button $wb2 -style ClButton$BID -image bts_ImgNone \
         -command [list [self] $TID close] -takefocus 0
     } else {
-      button $wb2 -borderwidth 0 -highlightthickness 0 -image bts_ImgNone \
+      button $wb2 -relief flat -borderwidth 0 -highlightthickness 0 -image bts_ImgNone \
         -command [list [self] $TID close] -takefocus 0 -background $bgm
     }
-  } else {
-    $wb configure -relief $relief -borderwidth $bd
-    $wb1 configure -relief flat -padding "$padx $pady $padx $pady" \
-      {*}[my Tab_Font $BID]
   }
+  $wb configure -relief $relief
+  $wb1 configure -relief flat -padding "$padx $pady $padx $pady" \
+    {*}[my Tab_Font $BID]
   lassign [my Tab_TextEllipsed $BID $text] text ttip
   if {[set tip [my $TID cget -tip]] ne {}} {
     my $TID configure -tip $tip  ;# run baltip after creating $wb1 & $wb2
@@ -241,6 +239,19 @@ method Tab_create {tabCom label} {
   proc $tabCom {args} "return \[[self] $TID {*}\$args\]"
   set lObj [my $BID cget -TABCOM]
   my $BID configure -TABCOM [lappend lObj [list $TID $tabCom]]
+}
+#_______________________
+
+method Tab_ExpandOption {BID expand} {
+  # Gets a real -expand option, counting that it may be set as a number>1
+  # meaning "starting from this number do expanding, otherwise not"
+  #   expand - original value of -expand option
+
+  if {[string is digit $expand] && $expand>1} {
+    set tabs [my $BID cget -TABS]
+    set expand [expr {$expand<[llength $tabs]}]
+  }
+  return $expand
 }
 #_______________________
 
@@ -273,6 +284,7 @@ method Tab_cget {args} {
           lassign [my $BID cget -bd -expand -static] bd expand static
           set bd [expr {$bd?2*$b1:0}]
           set b2 [expr {[my Aux_WidgetWidth $wb2]-3}]
+          set expand [my Tab_ExpandOption $BID $expand]
           set expand [expr {$expand||![my Tab_Iconic $BID]?2:0}]
           lappend res [expr {[my Aux_WidgetWidth $wb1]+$b2+$bd+$expand}]
         }
@@ -568,6 +580,7 @@ method Tab_Pack {BID TID wb wb1 wb2} {
     pack $wb1 -side left -fill x
     pack forget $wb2
   }
+  set expand [my Tab_ExpandOption $BID $expand]
   if {$expand} {
     pack $wb -side left -fill x -expand 1
   } else {
@@ -1078,8 +1091,8 @@ method Bar_Data {barOptions} {
     -hidearrows no -scrollsel yes -lablen 0 -tiplen 0 -tleft 0 -tright end \
     -disable [list] -select [list] -mark [list] -fgmark #800080  -fgsel "." \
     -relief groove -padx 1 -pady 1 -expand 0 -tabcurrent -1 -dotip no \
-    -bd 0 -separator 1 -lifo 0 -fg {} -bg {} -popuptip {}\
-    -ELLIPSE "\u2026" -MOVWIN {.bt_move} -ARRLEN 0 -USERMNU 0 -LLEN 0]
+    -bd 0 -separator 1 -lifo 0 -fg {} -bg {} -popuptip {} -sortlist 0 -comlist {} \
+    -ELLIPSE "\u2026" -MOVWIN {.bt_move} -ARRLEN 0 -USERMNU 0 -LLEN 0 -title Tabs]
   set tabinfo [set imagetabs [set popup [list]]]
   my Bar_DefaultMenu $BID popup
   foreach {optnam optval} $barOptions {
@@ -1168,7 +1181,14 @@ method Bar_MenuList {BID TID popi {ilist ""} {pop ""}} {
   }
   # ALERT: "font actual TkDefaultFont" may be wasteful with tclkits
   set font [list -font "[font actual TkDefaultFont] $fs"]
-  for {set i 0} {$i<[llength $ilist]} {incr i} {
+  set llen [llength $ilist]
+  if {[$popi cget -tearoff]} {
+    set ito 1
+    set TID $tabcurr
+  } else {
+    set ito 0
+  }
+  for {set i 0} {$i<$llen} {incr i} {
     if {[set tID [lindex $ilist $i]] eq {s}} continue
     set opts [my Tab_MarkAttrs $BID $tID no]
     if {"-image" ni $opts} {append opts " -image bts_ImgNone"}
@@ -1183,7 +1203,7 @@ method Bar_MenuList {BID TID popi {ilist ""} {pop ""}} {
     if {[string match *bartabs_cascade2 $popi] && [my Disabled $tID]} {
       append opts " -foreground [my $BID cget -FGMAIN]"  ;# move behind any
     }
-    $popi entryconfigure $i {*}$opts
+    catch {$popi entryconfigure [expr {$i+$ito}] {*}$opts}
   }
 }
 #_______________________
@@ -1344,37 +1364,51 @@ method ArrowsState {tleft tright sright} {
 }
 #_______________________
 
-method FillMenuList {BID popi {TID -1} {mnu ""}} {
+method FillMenuList {BID popi {TID -1} {mnu ""} {mustBeSorted {}}} {
 # Fills "List of tabs" item of popup menu.
 #   popi - menu of tab items
 #   TID - clicked tab ID
 #   mnu - root menu
+#   mustBeSorted - flag "sorted list"
 # Return a list of items types: s (separator) and TID.
 
-  lassign [my $BID cget -tiplen -popuptip] tiplen popuptip
+  lassign [my $BID cget -tiplen -popuptip -sortlist -comlist] tiplen popuptip sortlist comlist
   set vis [set seps 0] ;# flags for separators: before/after visible items
-  set idx -1
+  set idx [set icom -1]
   set res [list]
-  foreach tab [my [set BID [my ID]] listFlag] {
+  set tabs [my [set BID [my ID]] listFlag]
+  if {$mustBeSorted ne {}} {set sortlist $mustBeSorted}
+  if {$sortlist} {
+    set tabs [lsort -index 1 -dictionary $tabs]
+  }
+  foreach tab $tabs {
+    incr icom
     lassign $tab tID text vsbl
-    if {$vsbl && !$seps || !$vsbl && $vis} {
-      incr idx
-      $popi add separator
-      lappend res s
-      incr seps
-      set vis 0
-    } elseif {$vsbl} {
-      set vis 1
-    }
-    if {!$seps && $vis} { ;# no invisible at left
-      incr idx
-      $popi add separator
-      lappend res s
-      incr seps
+    if {!$sortlist} {
+      if {$vsbl && !$seps || !$vsbl && $vis} {
+        incr idx
+        $popi add separator
+        lappend res s
+        incr seps
+        set vis 0
+      } elseif {$vsbl} {
+        set vis 1
+      }
+      if {!$seps && $vis} { ;# no invisible at left
+        incr idx
+        $popi add separator
+        lappend res s
+        incr seps
+      }
     }
     set dsbl {}
     if {$TID == -1 || $mnu eq {bartabs_cascade}} {
-      set comm "[self] $tID show 1"
+      if {$comlist eq {}} {
+        set comm "[self] $tID show 1"
+      } else {
+        set tip [my $tID cget -tip]
+        set comm [string map [list %i $icom %t $tip] $comlist]
+      }
       if {[my Disabled $tID]} {set dsbl {-state disabled}}
     } else {
       set comm "[self] moveSelTab $TID $tID"
@@ -1388,7 +1422,7 @@ method FillMenuList {BID popi {TID -1} {mnu ""}} {
     $popi add command -label $text -command $comm {*}$dsbl -columnbreak $cbr
     lappend res $tID
   }
-  if {$seps<2} { ;# no invisible at right
+  if {$seps<2 && !$sortlist} { ;# no invisible at right
     $popi add separator
     lappend res s
   }
@@ -1825,7 +1859,7 @@ method sort {{mode -increasing}} {
   set BID [my ID]
   lassign [my $BID cget -tabcurrent -lifo] TID lifo
   set tabs [my $BID cget -TABS]
-  set tabs [lsort $mode -index 1 -command "[self] comparetext" $tabs]
+  set tabs [lsort $mode -index 1 -dictionary -command "[self] comparetext" $tabs]
   my $BID configure -TABS $tabs -lifo no
   my $TID show
   my $BID configure -lifo $lifo
@@ -1904,18 +1938,19 @@ method tabID {txt} {
 }
 #_______________________
 
-method popList {{X ""} {Y ""}} {
+method popList {{X ""} {Y ""} {sortedList 0}} {
 # Shows a menu of tabs.
 #   X - x coordinate of mouse pointer
 #   Y - y coordinate of mouse pointer
+#   sortedList - flag "sorted list"
 
   set BID [my ID]
   my $BID DestroyMoveWindow
-  set wbar [my $BID cget -wbar]
+  lassign [my $BID cget -wbar -title] wbar title
   set popi $wbar.popupList
   catch {destroy $popi}
-  menu $popi -tearoff 0
-  if {[set plist [my $BID FillMenuList $BID $popi]] eq "s"} {
+  menu $popi -tearoff 1 -title $title
+  if {[set plist [my $BID FillMenuList $BID $popi -1 {} $sortedList]] eq "s"} {
     destroy $popi
   } else {
     my Bar_MenuList $BID -1 $popi $plist
