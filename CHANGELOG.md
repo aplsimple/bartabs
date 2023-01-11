@@ -1,6 +1,15 @@
 # LAST CHANGES:
 
 
+Version `1.6.1 (11 Jan'23)`
+
+  - NEW   : moveTab method: moves a tab to a position
+  - NEW   : "-menu" items: checkbutton, tip and varname
+  - NEW   : "-lifoest" option: to force placing a tab to 1st position
+  - CHANGE: "-nocase" for comparetext
+  - CHANGE: show method's arguments: "no" by default
+
+
 Version `1.6.0 (28 Nov'22)`
 
   - BUGFIX: (in Windows) border issue with frame containers of tabs, at -bd>0
