@@ -1,6 +1,16 @@
 # LAST CHANGES:
 
 
+Version `1.6.2 (12 Jan'23)`
+
+  - NEW   : sort method's arguments: "mode" (-incr/-decr) and "cmd" (compare command)
+  - CHANGE: images squeezed
+  - CHANGE: show method: arguments' defaults ("show no no" means no moving tabs)
+  - CHANGE: unit tree & clearances
+  - CHANGE: test.tcl ("-expand 3" for 4th bar)
+  - CHANGE: docs
+
+
 Version `1.6.1 (11 Jan'23)`
 
   - NEW   : moveTab method: moves a tab to a position

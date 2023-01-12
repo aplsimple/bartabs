@@ -1,15 +1,14 @@
 #! /usr/bin/env tclsh
 
 # testing bartabs
-
-#----------------------------------
+#_______________________
 
 package require Tk
 
 lappend auto_path [file dirname [info script]] ../baltip
 package require bartabs
 
-#----------------------------------
+#_______________________
 
 image create photo markimg -data {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
 U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAMFSURBVHjaYvz//z8DJQAgAINxcAQgCANA
@@ -28,15 +27,14 @@ Yfj0/xXD6Sf3GLYu/f7m91OWACaO31f+M/+DeJoRGPEgzPQPjAECiInjFzsD5z+2n4zP+LaePv2e
 eSehFAoQQMwSakbAKGVmYGJk/M70jUPszW0eix/XeesYmP9M+8/2h+Ef82+G/yzADAT2AiOGAQAB
 xEhpdgYIMABQrSEzlY7wIwAAAABJRU5ErkJggg==}
 
-#----------------------------------
+# _______________________ Helpers _______________________ #
 
 proc ::TestDel {b t l} {
   return [bartabs::messageBox yesnocancel "Closing \"$l\"" "\nReally close \"$l\"?" \
     -icon question -detail "\nDetails: bar=$b tab=$t label=$l"]
   return [expr {$res eq "yes" ? 1 : ($res eq "no" ? 2 : 0)}]
 }
-
-#----------------------------------
+#_______________________
 
 proc ::TestAdd {BID} {
   set newTID [::bts $BID insertTab $::noname]
@@ -48,10 +46,9 @@ proc ::TestAdd {BID} {
       return
     }
   }
-  ::bts $newTID show
+  ::bts $newTID show yes
 }
-
-#----------------------------------
+#_______________________
 
 proc ::TestSwitch {BID TID optname} {
   set val [::bts $BID cget $optname]
@@ -64,19 +61,17 @@ proc ::TestSwitch {BID TID optname} {
     -detail "\n$BID's width is $bwidth.\n$TID's width is $twidth." \
     -icon info -type ok
 }
-
-#----------------------------------
+#_______________________
 
 proc ::TestComm {oper args} {
   puts "$oper: $args"
   return yes
 }
-
-#----------------------------------
+#_______________________
 
 proc ::TestViewSel {BID} {
   set sellist ""
-  set fewsel [::bts $BID listFlag "s"] 
+  set fewsel [::bts $BID listFlag "s"]
   set tcurr [::bts $BID cget -tabcurrent]
   foreach TID $fewsel {
     set text [::bts $TID cget -text]
@@ -90,24 +85,24 @@ proc ::TestViewSel {BID} {
   tk_messageBox -title "Info" -message "Selected tabs:\n\n$sellist" \
     -detail "Current tab: TID: $tcurr, label: $text\n\nClick on a tab while pressing Ctrl\nto select few tabs." -icon info -type ok
 }
-
-#----------------------------------
+#_______________________
 
 proc ::TestDsbl {BID TID menuitem} {
   set static [::bts $BID cget -static]
   return [expr {$static && $menuitem eq "Append $::noname"}]
 }
-
-#----------------------------------
+#_______________________
 
 proc ::TestPopupTip {wmenu idx TID} {
   set text "Some tips about\n\"[::bts $TID cget -text]\""
   catch {::baltip tip $wmenu $text -index $idx}
 }
 
-#----------------------------------
+# _______________________ Making bars _______________________ #
 
 proc ::FillBarTabs {} {
+
+  ## ________________________ Widgets _________________________ ##
 
   set ::noname "<No name>"
   set ::frm .frame
@@ -146,9 +141,13 @@ proc ::FillBarTabs {} {
   pack $::w5 -expand 1 -fill x -pady 10
   pack $::w4 -side left -after $::w3 -expand 1 -fill x -anchor ne
 
+  ## ________________________ bar 0 _________________________ ##
+
   set barOpts0 [list -wbar $::w0 -wbase $::frm -wproc "winfo width $::l1" \
     -popuptip ::TestPopupTip \
     -static yes -hidearrows yes -padx 6 -pady 6 -csel "::TestComm sel %b %t {%l}"]
+
+  ## ________________________ bar 1 _________________________ ##
 
   set barOpts1 [list -tleft 1 -tright 5 -wbar $::w1 -fgsel "" \
     -wbase $::frm -wproc "winfo width $::l1" -popuptip ::TestPopupTip \
@@ -159,6 +158,8 @@ proc ::FillBarTabs {} {
     "com {Switch -static option} {::TestSwitch %b %t -static}" \
     "com {Switch -scrollsel option} {::TestSwitch %b %t -scrollsel}" \
     "com {Switch -hidearrows option} {::TestSwitch %b %t -hidearrows}"] ]
+
+  ## ________________________ bar 2 _________________________ ##
 
   set barOpts2 [list -wbar $::w2 -wbase $::l2 -pady 3 \
     -lablen 11 -expand 0 -imagemark markimg -tiplen 15 -dotip yes \
@@ -171,11 +172,13 @@ proc ::FillBarTabs {} {
     "com {View selected} {::TestViewSel %b}" \
     sep \
     "com {Switch -expand option} {::TestSwitch %b %t -expand}" ]]
-  
+
+  ## ________________________ bar 1 _________________________ ##
+
   set barOpts3 [list -wbar $::w5 -wbase $::frm -tleft 7 -bd 0 -popuptip ::TestPopupTip \
-    -wproc "expr {\[winfo width $::frm\]-\[winfo width $::l3\]-80}" \
+    -expand 3 -wproc "expr {\[winfo width $::frm\]-\[winfo width $::l3\]-80}" \
     -menu [list sep "com {Switch -bd option} {::TestSwitch %b %t -bd}"]]
-  
+
   lappend barOpts1 -tab "#0 tab item" ;# to test for duplicates
   lappend barOpts2 -tab "#0 tab item" -tab "Item 1 \" \{ ?"
   for {set n 0} {$n<10} {incr n} {
@@ -191,6 +194,8 @@ proc ::FillBarTabs {} {
     lappend barOpts3 -tab $tab
   }
 
+  ## ________________________ Create objects _________________________ ##
+
   bartabs::Bars create ::bts
   ::bts create ::bar0 $barOpts0
   ::bts create ::bar1 $barOpts1
@@ -198,7 +203,7 @@ proc ::FillBarTabs {} {
   set ::bar3 [::bts create $barOpts3]
 }
 
-#----------------------------------
+# _______________________ Run me _______________________ #
 
 if {$::tcl_platform(platform) == "windows"} {
   wm attributes . -alpha 0.0
@@ -225,7 +230,7 @@ if {1} {
   pack .mimi.l
   update
   after 3000
-  after 1000 {::bts tab4 show ; ::bts tab15 show}
+  after 1000 {::bts tab4 show ; ::bts tab15 show yes}
   after 2000 {::bts markTab tab11 tab12 tab13 tab14 tab15 tab17 tab18}
   after 2500 {::bar0 disableTab tab19 tab3}  ;# any bar can use disable/mark
   after 3000 {::bts unmarkTab tab11 tab17 tab18}
@@ -233,7 +238,7 @@ if {1} {
   after 4000 {::bar0 insertTab "-0.5 item" 0}
   after 4000 {::bar1 insertTab "Button 0.5" 1}
   after 4000 [list ::bts $::bar2 insertTab "Button 0.5" 1]
-  after 4500 {::bts tab11 configure -text "==12th tab==" ; ::bts tab11 show}
+  after 4500 {::bts tab11 configure -text "==12th tab==" ; ::bts tab11 show yes}
   after 5000 {::bts tab18 close}
   after 5050 {if {[winfo exists .mimi]} {destroy .mimi}}
   after 6000 {::bts tab11 drawAll ;
@@ -252,5 +257,4 @@ if {1} {
     ::bar1 draw
   #after 7000 {::bts destroy}  ;# testing destructor
   }
-
-}  
+}
