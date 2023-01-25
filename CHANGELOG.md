@@ -1,6 +1,11 @@
 # LAST CHANGES:
 
 
+Version `1.6.3 (25 Jan'23)`
+
+  - CHANGE: "Visible" method become "visible"
+
+
 Version `1.6.2 (12 Jan'23)`
 
   - NEW   : sort method's arguments: "mode" (-incr/-decr) and "cmd" (compare command)
