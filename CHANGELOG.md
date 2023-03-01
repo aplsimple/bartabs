@@ -1,6 +1,11 @@
 # LAST CHANGES:
 
 
+Version `1.6.4 (1 Mar'23)`
+
+  - NEW   : %ID wildcard for -comlist command (tab's ID)
+
+
 Version `1.6.3 (25 Jan'23)`
 
   - CHANGE: "Visible" method become "visible"
