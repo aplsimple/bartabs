@@ -1,6 +1,11 @@
 # LAST CHANGES:
 
 
+Version `1.6.5 (7 Mar'23)`
+
+  - BUGFIX: click on tabs with ellipses, differing only in parts after ellipse
+
+
 Version `1.6.4 (1 Mar'23)`
 
   - NEW   : %ID wildcard for -comlist command (tab's ID)
