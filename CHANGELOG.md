@@ -1,6 +1,11 @@
 # LAST CHANGES:
 
 
+Version `1.6.6 (24 Mar'23)`
+
+  - NEW   : delete "tab" method at TID deletion
+
+
 Version `1.6.5 (7 Mar'23)`
 
   - BUGFIX: click on tabs with ellipses, differing only in parts after ellipse
