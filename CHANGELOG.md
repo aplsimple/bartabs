@@ -1,9 +1,10 @@
 # LAST CHANGES:
 
 
-Version `1.6.6 (24 Mar'23)`
+Version `1.6.6 (31 Mar'23)`
 
   - NEW   : delete "tab" method at TID deletion
+  - DELETE: Tab_create method
 
 
 Version `1.6.5 (7 Mar'23)`
