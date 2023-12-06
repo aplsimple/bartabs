@@ -30,7 +30,7 @@ xEhpdgYIMABQrSEzlY7wIwAAAABJRU5ErkJggg==}
 # _______________________ Helpers _______________________ #
 
 proc ::TestDel {b t l} {
-  return [bartabs::messageBox yesnocancel "Closing \"$l\"" "\nReally close \"$l\"?" \
+  return [::bartabs::messageBox yesnocancel "Closing \"$l\"" "\nReally close \"$l\"?" \
     -icon question -detail "\nDetails: bar=$b tab=$t label=$l"]
   return [expr {$res eq "yes" ? 1 : ($res eq "no" ? 2 : 0)}]
 }
@@ -196,7 +196,7 @@ proc ::FillBarTabs {} {
 
   ## ________________________ Create objects _________________________ ##
 
-  bartabs::Bars create ::bts
+  ::bartabs::Bars create ::bts
   ::bts create ::bar0 $barOpts0
   ::bts create ::bar1 $barOpts1
   set ::bar2 [::bts create $barOpts2]

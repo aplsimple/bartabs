@@ -1,6 +1,11 @@
 # LAST CHANGES:
 
 
+Version `1.6.7 (27 Nov'23)`
+
+  - CHANGE: adaptation to Tcl 9.0
+
+
 Version `1.6.6 (31 Mar'23)`
 
   - NEW   : delete "tab" method at TID deletion
