@@ -1,6 +1,13 @@
 # LAST CHANGES:
 
 
+Version `1.6.8 (20 Mar'24)`
+
+  - CHANGE: popup menu/tab(s) behind: let a neighbor be shown if possible (MoveTab method)
+  - CHANGE: tests
+  - CHANGE: docs & clearances
+
+
 Version `1.6.7 (27 Nov'23)`
 
   - CHANGE: adaptation to Tcl 9.0

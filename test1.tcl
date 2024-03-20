@@ -5,6 +5,11 @@
 
 package require Tk
 
+catch {
+  source [file join ../transpops/transpops.tcl]
+  #set ::transpops::my::perchars 1.0 ;# for popups to be 12 times longer
+  ::transpops::run .bak/transpops.txt {<Control-q> <Alt-q>} .frame
+}
 lappend auto_path [file dirname [info script]] ../baltip
 package require bartabs
 
@@ -181,7 +186,7 @@ proc ::FillBarTabs {} {
 
   lappend barOpts1 -tab "#0 tab item" ;# to test for duplicates
   lappend barOpts2 -tab "#0 tab item" -tab "Item 1 \" \{ ?"
-  for {set n 0} {$n<5} {incr n} {
+  for {set n 0} {$n<10} {incr n} {
     set tab "#$n tab item[string repeat ~ [expr $n/2]]"
     if {$n<4} {lappend barOpts0 -tab $tab}
     lappend barOpts1 -tab $tab
@@ -215,11 +220,6 @@ try {ttk::style theme use clam}
 ::FillBarTabs
 
 if {0} {
-  catch {
-    source [file join ../transpops/transpops.tcl]
-    #set ::transpops::my::perchars 1.0 ;# for popups to be 12 times longer
-    ::transpops::run .bak/transpops.txt {<Control-q> <Alt-q>} .frame
-  }
   ####### some mimicring actions with bars & tabs:
   toplevel .mimi
   label .mimi.l -text "\n Please wait 7 seconds \n while seeing this test. \n" -fg black -bg #f4eca1 -font {-weight bold}

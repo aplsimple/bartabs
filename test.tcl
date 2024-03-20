@@ -5,6 +5,11 @@
 
 package require Tk
 
+catch {
+  source [file join ../transpops/transpops.tcl]
+  #set ::transpops::my::perchars 1.0 ;# for popups to be 12 times longer
+  ::transpops::run .bak/transpops.txt {<Control-q> <Alt-q>} .frame
+}
 lappend auto_path [file dirname [info script]] ../baltip
 package require bartabs
 
@@ -215,11 +220,6 @@ try {ttk::style theme use clam}
 ::FillBarTabs
 
 if {1} {
-  catch {
-    source [file join ../transpops/transpops.tcl]
-    #set ::transpops::my::perchars 1.0 ;# for popups to be 12 times longer
-    ::transpops::run .bak/transpops.txt {<Control-q> <Alt-q>} .frame
-  }
   ####### some mimicring actions with bars & tabs:
   toplevel .mimi
   label .mimi.l -text "\n Please wait 7 seconds \n while seeing this test. \n" -fg black -bg #f4eca1 -font {-weight bold}
