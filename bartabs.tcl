@@ -63,7 +63,6 @@ KTCp4rURAEWmB5A5tzUJAAAAAElFTkSuQmCC}
 
 }
 
-
 # ____________ bartabs class hierarchy ____________ #
 
 oo::class create ::bartabs::Tab {
