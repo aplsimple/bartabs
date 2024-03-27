@@ -1,6 +1,12 @@
 # LAST CHANGES:
 
 
+Version `1.6.9 (22 Mar'24)`
+
+  - NEW   : calling -cmov command (if set) before moving selected tabs
+  - NEW   : -cmov3 option: command after moving selected tabs
+
+
 Version `1.6.8 (20 Mar'24)`
 
   - CHANGE: popup menu/tab(s) behind: let a neighbor be shown if possible (MoveTab method)
