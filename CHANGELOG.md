@@ -1,7 +1,12 @@
 # LAST CHANGES:
 
 
-Version `1.6.9 (24 Jul'24)`
+Version `1.6.10 (30 Dec'24)`
+
+  - CHANGE: check for too vertical shift
+
+
+Version `1.6.19 (24 Jul'24)`
 
   - NEW   : calling -cmov command (if set) before moving selected tabs
   - NEW   : -cmov3 option: command after moving selected tabs
